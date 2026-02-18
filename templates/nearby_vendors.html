@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nearby Vendors</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor.css') }}">
+</head>
+<body>
+
+<div class="dashboard-container">
+
+    <div class="top-bar">
+        <h1>📍 Nearby Vendors</h1>
+        <a href="{{ url_for('customer_dashboard') }}" class="logout-btn">Back</a>
+    </div>
+
+    <div class="card">
+        <h2>Vendors within 5 km</h2>
+
+        {% if vendors %}
+        <div class="product-grid">
+            {% for vendor in vendors %}
+            <div class="product-card">
+                <h3>{{ vendor.company_name }}</h3>
+                <p>{{ vendor.distance }} km away</p>
+                <p>{{ vendor.address }}</p>
+
+                <!-- MAP PREVIEW -->
+                <iframe
+                    width="100%"
+                    height="200"
+                    frameborder="0"
+                    style="border-radius:12px;"
+                    src="https://www.openstreetmap.org/export/embed.html?bbox={{ vendor.longitude-0.01 }},{{ vendor.latitude-0.01 }},{{ vendor.longitude+0.01 }},{{ vendor.latitude+0.01 }}&layer=mapnik&marker={{ vendor.latitude }},{{ vendor.longitude }}">
+                </iframe>
+
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+            <p>No vendors found within 5 km.</p>
+        {% endif %}
+    </div>
+
+</div>
+
+</body>
+</html>

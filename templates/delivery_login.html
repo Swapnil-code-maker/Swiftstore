@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Delivery Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+</head>
+<body>
+
+<div class="login-box">
+    <h2>Delivery Agent Login</h2>
+    {% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <p style="color: green; text-align:center; margin-bottom:15px;">
+        {{ messages[0] }}
+    </p>
+  {% endif %}
+{% endwith %}
+
+
+    <form method="POST">
+    <div class="input-group">
+        <input type="email" name="email" placeholder="Email" required>
+    </div>
+
+    <div class="input-group">
+        <input type="password" name="password" placeholder="Password" required>
+    </div>
+
+    <button type="submit">Login</button>
+</form>
+
+<a href="{{ url_for('register', role='delivery') }}" 
+class="back-link">Create your account</a>
+<a href="/" class="back-link">← Back to Portal</a>
+</div>
+</body>
+</html>

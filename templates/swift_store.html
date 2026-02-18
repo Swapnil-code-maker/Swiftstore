@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swift Store · VIT Bhopal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='swift_store.css') }}">
+</head>
+<body>
+
+<header>
+    <div class="header-left">
+        <img src="https://image.similarpng.com/file/similarpng/very-thumbnail/2021/09/Online-shopping-logo-design-template-on-transparent-background-PNG.png"
+             height="50" width="50" class="swiftstore-logo">
+        <div class="brand-wrapper">
+            <span class="brand-gradient">Swift Store</span>
+            <span class="delivery-tagline">Delivery in 10 minutes</span>
+           <a href="{{ url_for('nearby_vendors') }}" class="nearby-btn">
+    📍 View Nearby Vendors
+</a>
+
+
+        </div>
+    </div>
+    <div style="position: absolute; top: 20px; right: 30px; display: flex; gap: 12px; align-items: center;">
+
+    <!-- My Orders Button -->
+    <a href="{{ url_for('my_orders') }}" 
+       style="
+            text-decoration: none;
+            padding: 10px 18px;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+            transition: 0.3s;
+       "
+       onmouseover="this.style.transform='scale(1.05)'"
+       onmouseout="this.style.transform='scale(1)'"
+    >
+        📦 My Orders
+    </a>
+
+    <!-- Your ORIGINAL Logout Button (unchanged styling) -->
+    <a href="{{ url_for('logout') }}" 
+       style="
+            text-decoration: none;
+            padding: 10px 18px;
+            background: linear-gradient(135deg, #ff4d4d, #ff1a1a);
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+            transition: 0.3s;
+       "
+       onmouseover="this.style.transform='scale(1.05)'"
+       onmouseout="this.style.transform='scale(1)'"
+    >
+        Logout
+    </a>
+
+</div>
+
+
+</header>
+
+<div class="three-column-layout">
+
+<!-- LEFT SIDEBAR -->
+<aside class="shop-sidebar">
+    <h3 class="sidebar-title">All Stores</h3>
+    <ul class="store-list">
+
+        <!-- All Stores -->
+        <li class="store-item {% if not selected_vendor_id %}active{% endif %}">
+            <a href="{{ url_for('customer_dashboard') }}">
+                All Stores
+            </a>
+        </li>
+
+        <!-- Vendors -->
+        {% for vendor in vendors %}
+        <li class="store-item {% if selected_vendor_id and selected_vendor_id|int == vendor.id %}active{% endif %}">
+            <a href="{{ url_for('customer_dashboard', vendor_id=vendor.id) }}">
+                {{ vendor.company_name }}
+            </a>
+        </li>
+        {% endfor %}
+
+    </ul>
+</aside>
+
+
+    <!-- CENTER PRODUCTS -->
+    <main class="products-main">
+
+    <!-- 🔎 FILTER BAR -->
+    <form method="GET" style="margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap;">
+
+        {% if selected_vendor_id %}
+            <input type="hidden" name="vendor_id" value="{{ selected_vendor_id }}">
+        {% endif %}
+
+        <input 
+            type="text" 
+            name="search" 
+            placeholder="Search products..."
+            value="{{ search_query or '' }}"
+            style="padding:8px; border-radius:6px; border:1px solid #ccc;"
+        >
+
+        <select name="sort" style="padding:8px; border-radius:6px;">
+            <option value="">Sort By</option>
+            <option value="price_low" {% if sort_by == "price_low" %}selected{% endif %}>Price Low → High</option>
+            <option value="price_high" {% if sort_by == "price_high" %}selected{% endif %}>Price High → Low</option>
+            <option value="distance" {% if sort_by == "distance" %}selected{% endif %}>Nearest First</option>
+        </select>
+
+        <button type="submit" style="padding:8px 16px; border-radius:6px; background:#3b82f6; color:white;">
+            Apply
+        </button>
+
+    </form>
+
+    <div class="products-grid-container">
+
+   {% for product in products %}
+<div class="product-card">
+
+    <img src="{{ product.image }}" class="product-img">
+
+    <div class="delivery-badge">10 min</div>
+
+    <div class="product-name">
+        {{ product.name }}
+    </div>
+
+    <div class="product-category">
+        {{ product.category }}
+    </div>
+
+    <div class="product-store">
+        🏪 {{ product.vendor_name }}
+    </div>
+
+   {% if product.distance is not none %}
+<p class="distance">
+    📍 {{ product.distance }} km away
+</p>
+{% else %}
+<p class="distance unknown">
+    📍 Distance unavailable
+</p>
+{% endif %}
+
+
+    <div class="product-price">
+        ₹{{ product.price }}
+    </div>
+
+    <div class="product-stock">
+    {{ product.stock }} items left
+</div>
+
+
+    <div class="quantity-label">Quantity</div>
+
+<div class="quantity-box">
+    <button class="qty-control"
+        onclick="changeQuantity({{ product.id }}, -1)">−</button>
+
+    <span id="qty-{{ product.id }}" class="qty-number">1</span>
+
+    <button class="qty-control"
+        onclick="changeQuantity({{ product.id }}, 1)">+</button>
+</div>
+
+<button class="add-btn"
+    onclick="addToCartWithQty(
+        {{ product.id }},
+        '{{ product.name }}',
+        {{ product.price }},
+        {{ product.vendor_id }}
+    )">
+    Add to Cart
+</button>
+
+
+
+
+</div>
+{% endfor %}
+</div>
+
+    </main>
+
+    <!-- RIGHT CART -->
+    <aside class="cart-sidebar">
+
+    <div class="cart-header">
+        <h3>My Cart</h3>
+        <span class="cart-count">0</span>
+    </div>
+
+    <!-- Scrollable Items Area -->
+    <div class="cart-content">
+        <div class="empty-cart">
+            <p>Your cart is empty</p>
+            <small>Add items to get 10 min delivery</small>
+        </div>
+    </div>
+
+    <!-- Sticky Bottom Area -->
+    <div class="cart-bottom">
+        <!-- Billing will be injected here by JS -->
+    </div>
+    </div>
+
+
+</aside>
+
+
+
+
+
+<script src="{{ url_for('static', filename='swift_store.js') }}"></script>
+<script>
+function saveCustomerLocation() {
+    if (!navigator.geolocation) {
+        console.log("Geolocation not supported");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(function(position) {
+        fetch("/save-customer-location", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            })
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log("Location saved");
+                localStorage.setItem("locationSaved", "true");
+            }
+        });
+    });
+}
+
+// ✅ Only run once
+saveCustomerLocation();
+</script>
+
+
+{% if notifications %}
+<div id="toast-container">
+    {% for note in notifications %}
+        <div class="toast">{{ note.message }}</div>
+    {% endfor %}
+</div>
+
+<style>
+#toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.toast {
+    background: linear-gradient(135deg, #111827, #1f2937);
+    color: #fff;
+    padding: 14px 20px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    font-weight: 500;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    animation: slideIn 0.4s ease forwards;
+    opacity: 0;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(40px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(function() {
+        const container = document.getElementById("toast-container");
+        if (container) {
+            container.style.display = "none";
+        }
+    }, 5000); // auto hide after 5 seconds
+});
+</script>
+{% endif %}
+
+
+</body>
+</html>

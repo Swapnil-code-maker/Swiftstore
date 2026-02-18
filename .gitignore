@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+database.db
+instance/
+.env
+venv/
+static/uploads/
+Demo/
+*https://drive.google.com/file/d/1g6wsJnSgYW2UGzC_LkNGhBQXvlGaPNmV/view?usp=sharing.mp4

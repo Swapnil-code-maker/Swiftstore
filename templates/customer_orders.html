@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Orders</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            margin: 0;
+            color: white;
+        }
+
+        .header {
+            background: #1e293b;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand img {
+            height: 40px;
+        }
+
+        .brand h2 {
+            margin: 0;
+        }
+
+        .container {
+            padding: 30px;
+        }
+
+        .order-card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            transition: 0.3s;
+        }
+
+        .order-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 15px rgba(0,0,0,0.4);
+        }
+
+        .track-btn {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: #22c55e;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        .track-btn:hover {
+            background: #16a34a;
+        }
+
+        .back-btn {
+            text-decoration: none;
+            background: #3b82f6;
+            padding: 8px 14px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+        }
+
+        .status {
+            font-weight: bold;
+            color: #22c55e;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+
+    <div class="brand">
+        <img src="https://image.similarpng.com/file/similarpng/very-thumbnail/2021/09/Online-shopping-logo-design-template-on-transparent-background-PNG.png">
+        <h2>SwiftStore · My Orders</h2>
+    </div>
+
+    <a href="{{ url_for('customer_dashboard') }}" class="back-btn">
+        ← Back to Shop
+    </a>
+
+</div>
+
+{% if orders %}
+    {% for order in orders %}
+    <div class="order-card">
+        <p><strong>Order ID:</strong> #{{ order.id }}</p>
+        <p><strong>Total:</strong> ₹{{ order.total_price }}</p>
+        <p><strong>Status:</strong> 
+            <span class="status">
+                {{ order.status.replace("_", " ").title() }}
+            </span>
+        </p>
+
+        {% if order.status != "cancelled" %}
+        <a href="{{ url_for('track_order', order_id=order.id) }}"
+           class="track-btn">
+           🚚 Track Order
+        </a>
+        {% endif %}
+        <!-- COMPLAINT BUTTON -->
+<button onclick="openComplaintModal({{ order.id }})"
+        style="
+            margin-top:10px;
+            padding:8px 16px;
+            background:#f59e0b;
+            color:white;
+            border:none;
+            border-radius:6px;
+            font-weight:600;
+            cursor:pointer;
+        ">
+    ⚠️ Complain
+</button>
+
+{% if order.status == "delivered" %}
+    <form method="POST"
+          action="{{ url_for('submit_rating', order_id=order.id) }}"
+          style="margin-top:12px;">
+
+        <label style="font-weight:bold;">⭐ Rate Delivery:</label>
+
+        <select name="rating"
+                required
+                style="
+                    padding:6px;
+                    margin-left:10px;
+                    border-radius:6px;
+                    border:none;
+                ">
+            <option value="">Select</option>
+            <option value="1">⭐ 1</option>
+            <option value="2">⭐⭐ 2</option>
+            <option value="3">⭐⭐⭐ 3</option>
+            <option value="4">⭐⭐⭐⭐ 4</option>
+            <option value="5">⭐⭐⭐⭐⭐ 5</option>
+        </select>
+
+        <button type="submit"
+                style="
+                    margin-left:10px;
+                    padding:6px 14px;
+                    background:#facc15;
+                    border:none;
+                    border-radius:6px;
+                    font-weight:bold;
+                    cursor:pointer;
+                ">
+            Submit
+        </button>
+    </form>
+{% endif %}
+
+        {% if order.status in ["placed", "approved"] %}
+        <form method="POST"
+              action="{{ url_for('cancel_order', order_id=order.id) }}"
+              style="margin-top:10px;">
+            <button type="submit"
+                style="
+                    padding:8px 16px;
+                    background:#ef4444;
+                    color:white;
+                    border:none;
+                    border-radius:6px;
+                    font-weight:bold;
+                    cursor:pointer;
+                ">
+                <strong> Cancel Order </strong>
+            </button>
+        </form>
+        {% endif %}
+
+    </div>
+    {% endfor %}
+{% else %}
+    <p>No orders yet.</p>
+{% endif %}
+
+
+
+</div>
+<!-- COMPLAINT MODAL -->
+<div id="complaintModal" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.6);
+    justify-content:center;
+    align-items:center;
+">
+
+    <div style="
+        background:#1e293b;
+        padding:25px;
+        border-radius:12px;
+        width:400px;
+    ">
+        <h3>Submit Complaint</h3>
+
+        <form method="POST" action="{{ url_for('submit_complaint') }}">
+            <input type="hidden" name="order_id" id="complaintOrderId">
+
+            <textarea name="message"
+                      placeholder="Describe your issue..."
+                      required
+                      style="
+                          width:100%;
+                          height:100px;
+                          margin-top:10px;
+                          padding:10px;
+                          border-radius:8px;
+                          border:none;
+                      "></textarea>
+
+            <div style="margin-top:15px; text-align:right;">
+                <button type="button"
+                        onclick="closeComplaintModal()"
+                        style="
+                            padding:6px 12px;
+                            background:#64748b;
+                            border:none;
+                            color:white;
+                            border-radius:6px;
+                            margin-right:8px;
+                        ">
+                    Cancel
+                </button>
+
+                <button type="submit"
+                        style="
+                            padding:6px 14px;
+                            background:#ef4444;
+                            border:none;
+                            color:white;
+                            border-radius:6px;
+                            font-weight:600;
+                        ">
+                    Submit
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function openComplaintModal(orderId) {
+    document.getElementById("complaintOrderId").value = orderId;
+    document.getElementById("complaintModal").style.display = "flex";
+}
+
+function closeComplaintModal() {
+    document.getElementById("complaintModal").style.display = "none";
+}
+</script>
+
+</body>
+</html>

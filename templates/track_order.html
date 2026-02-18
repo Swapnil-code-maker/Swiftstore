@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Track Order #{{ order.id }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Leaflet CSS -->
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: white;
+        }
+
+        .header {
+            padding: 20px;
+            background: #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-box {
+            padding: 15px 20px;
+            background: #1e293b;
+            margin: 20px;
+            border-radius: 10px;
+     
+
+
+        }
+
+        .status {
+            font-weight: bold;
+            font-size: 18px;
+            color: #22c55e;
+        }
+
+        #map {
+            height: 500px;
+            margin: 20px;
+            border-radius: 10px;
+        }
+
+        .back-btn {
+            text-decoration: none;
+            background: #3b82f6;
+            padding: 8px 14px;
+            border-radius: 6px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h2>Tracking Order #{{ order.id }}</h2>
+    <a href="{{ url_for('my_orders') }}" class="back-btn">Back</a>
+    
+</div>
+
+<div class="status-box">
+    <p><strong>Status:</strong> 
+        <span class="status">{{ order.status.replace("_", " ").title() }}</span>
+    </p>
+    <p><strong>Total:</strong> ₹{{ order.total_price }}</p>
+    <div style="margin:20px;">
+    <h3>🚚 Live Tracking</h3>
+    <p>Distance Remaining: <strong id="live-distance">--</strong></p>
+    <p>ETA: <strong id="live-eta">--</strong></p>
+</div>
+ <div style="display:flex; gap:8px; margin-top:20px;">
+    <div id="step-placed" style="flex:1; padding:8px; text-align:center; background:#334155; border-radius:6px;">Placed</div>
+    <div id="step-assigned" style="flex:1; padding:8px; text-align:center; background:#334155; border-radius:6px;">Assigned</div>
+    <div id="step-picked_up" style="flex:1; padding:8px; text-align:center; background:#334155; border-radius:6px;">Picked Up</div>
+    <div id="step-out_for_delivery" style="flex:1; padding:8px; text-align:center; background:#334155; border-radius:6px;">Out</div>
+    <div id="step-delivered" style="flex:1; padding:8px; text-align:center; background:#334155; border-radius:6px;">Delivered</div>
+</div>
+</div>
+
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
+<script>
+
+const ORDER_ID = {{ order.id }};
+let map = L.map('map');
+let mapInitialized = false;
+
+let deliveryMarker = null;
+let customerMarker = null;
+let vendorMarkers = [];
+let routeLine = null;
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+/* ---------------- ICONS ---------------- */
+
+const customerIcon = L.icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/3177/3177440.png",
+    iconSize: [35, 35]
+});
+
+const vendorIcon = L.icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/3081/3081559.png",
+    iconSize: [35, 35]
+});
+
+const deliveryIcon = L.icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/743/743922.png",
+    iconSize: [40, 40]
+});
+
+/* ---------------- UPDATE TRACKING ---------------- */
+
+function updateTracking() {
+
+    fetch(`/order-location-data/${ORDER_ID}`)
+        .then(res => res.json())
+        .then(data => {
+
+            if (!data.customer) return;
+
+            const customer = data.customer;
+            const delivery = data.delivery;
+            const vendors = data.vendors || [];
+            const status = data.status;
+
+            if (!customer.lat || !customer.lon) return;
+
+            if (!mapInitialized) {
+                map.setView([customer.lat, customer.lon], 14);
+                mapInitialized = true;
+            }
+
+            /* -------- CUSTOMER -------- */
+
+            if (!customerMarker) {
+                customerMarker = L.marker(
+                    [customer.lat, customer.lon],
+                    { icon: customerIcon }
+                ).addTo(map).bindPopup("📍 Customer Location");
+            }
+
+            /* -------- VENDORS -------- */
+
+            vendorMarkers.forEach(marker => map.removeLayer(marker));
+            vendorMarkers = [];
+
+            vendors.forEach(v => {
+                if (v.lat && v.lon) {
+                    const marker = L.marker(
+                        [v.lat, v.lon],
+                        { icon: vendorIcon }
+                    ).addTo(map).bindPopup("🏪 Vendor: " + (v.name || "Store"));
+                    vendorMarkers.push(marker);
+                }
+            });
+
+            /* -------- DELIVERY -------- */
+
+            if (delivery && delivery.lat && delivery.lon) {
+
+                if (!deliveryMarker) {
+                    deliveryMarker = L.marker(
+                        [delivery.lat, delivery.lon],
+                        { icon: deliveryIcon }
+                    ).addTo(map).bindPopup("🚚 Delivery Partner");
+                } else {
+                    deliveryMarker.setLatLng([delivery.lat, delivery.lon]);
+                }
+
+                /* -------- ROUTE LOGIC -------- */
+
+                let destinationLat = customer.lat;
+                let destinationLon = customer.lon;
+
+                // If still assigned → go to nearest vendor first
+                if (status === "assigned" && vendors.length > 0) {
+                    destinationLat = vendors[0].lat;
+                    destinationLon = vendors[0].lon;
+                }
+
+                fetch(`https://router.project-osrm.org/route/v1/driving/${delivery.lon},${delivery.lat};${destinationLon},${destinationLat}?overview=full&geometries=geojson`)
+                    .then(res => res.json())
+                    .then(routeData => {
+
+                        if (routeData.routes && routeData.routes.length > 0) {
+
+                            const route = routeData.routes[0];
+
+                            if (routeLine) {
+                                map.removeLayer(routeLine);
+                            }
+
+                            routeLine = L.geoJSON(route.geometry, {
+                                style: {
+                                    color: '#22c55e',
+                                    weight: 5
+                                }
+                            }).addTo(map);
+
+                            map.fitBounds(routeLine.getBounds());
+
+                            const distanceKm = (route.distance / 1000).toFixed(2);
+                            const etaMin = Math.ceil(route.duration / 60);
+
+                            document.getElementById("live-distance").innerText =
+                                distanceKm + " km";
+
+                            document.getElementById("live-eta").innerText =
+                                etaMin + " min";
+                        }
+                    });
+            }
+
+            updateStatusBar(status);
+
+        })
+        .catch(err => console.log("Tracking error:", err));
+}
+
+/* ---------------- STATUS BAR ---------------- */
+
+function updateStatusBar(status) {
+
+    const steps = ["placed","assigned","picked_up","out_for_delivery","delivered"];
+
+    steps.forEach(step => {
+        const el = document.getElementById("step-" + step);
+        if (!el) return;
+
+        if (steps.indexOf(step) <= steps.indexOf(status)) {
+            el.style.background = "#22c55e";
+        } else {
+            el.style.background = "#334155";
+        }
+    });
+}
+
+/* ---------------- AUTO REFRESH ---------------- */
+
+updateTracking();
+setInterval(updateTracking, 5000);
+
+</script>
+
+
+
+
+</body>
+</html>

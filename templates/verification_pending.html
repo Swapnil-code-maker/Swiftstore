@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verification Pending</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='swift_store.css') }}">
+    <style>
+        .pending-box {
+            max-width: 500px;
+            margin: 120px auto;
+            text-align: center;
+            padding: 40px;
+            border-radius: 20px;
+            background: var(--card-bg);
+            box-shadow: var(--shadow-md);
+        }
+
+        .pending-box h2 {
+            margin-bottom: 15px;
+            background: var(--gradient-brand);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .pending-box p {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .logout-btn {
+            padding: 12px 24px;
+            border-radius: 30px;
+            border: none;
+            background: var(--gradient-brand);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="pending-box">
+    <h2>Verification Pending</h2>
+    <p>Your documents are under review. Please wait for admin approval.</p>
+
+    <a href="{{ url_for('logout') }}">
+        <button class="logout-btn">Logout</button>
+    </a>
+</div>
+
+</body>
+</html>

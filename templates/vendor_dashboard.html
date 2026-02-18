@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vendor Dashboard</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+<div class="dashboard-container">
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <div class="brand">
+            <h1><i class="fa-solid fa-store"></i> Vendor Dashboard</h1>
+            {% if vendor.company_name %}
+                <p class="vendor-address">{{ vendor.company_name }}</p>
+            {% endif %}
+        </div>
+
+        <a href="{{ url_for('logout') }}" class="logout-btn">
+            <i class="fa-solid fa-right-from-bracket"></i> Logout
+        </a>
+    </div>
+
+    <!-- LOCATION CARD -->
+    <div class="card location-card">
+        <h2><i class="fa-solid fa-location-dot"></i> Shop Location</h2>
+
+        {% if vendor.latitude is not none and vendor.longitude is not none %}
+
+            <p class="location-success">
+                Location Saved ✔  
+                ({{ vendor.latitude }}, {{ vendor.longitude }})
+            </p>
+        {% else %}
+            <p class="location-warning">
+                Location not set yet.
+            </p>
+        {% endif %}
+
+        <button class="location-btn" onclick="getVendorLocation()">
+            <i class="fa-solid fa-location-crosshairs"></i>
+            Set / Update Location
+        </button>
+    </div>
+
+    <!-- ADD PRODUCT -->
+    <div class="card">
+        <h2><i class="fa-solid fa-plus"></i> Add New Product</h2>
+
+        <form method="POST" class="product-form">
+            <input type="text" name="name" placeholder="Product Name" required>
+            <input type="number" step="0.01" name="price" placeholder="Price (₹)" required>
+            <input type="text" name="category" placeholder="Category (Snacks, Stationery...)" required>
+            <input type="text" name="image" placeholder="Image URL" required>
+            <input type="number" name="stock" placeholder="Stock Quantity" required>
+
+
+            <button type="submit" class="add-btn">
+                <i class="fa-solid fa-circle-plus"></i> Add Product
+            </button>
+        </form>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div class="card">
+        <h2><i class="fa-solid fa-box"></i> Your Products</h2>
+
+        <div class="product-grid">
+            {% for product in products %}
+           <div class="product-card">
+    <img src="{{ product.image }}" alt="{{ product.name }}">
+
+    <div class="product-info">
+        <h3>{{ product.name }}</h3>
+        <p class="price">₹{{ product.price }}</p>
+        <span class="category">{{ product.category }}</span>
+
+        <div class="stock-section">
+            <span class="stock-label">Stock: {{ product.stock }}</span>
+
+            <form action="{{ url_for('update_stock', product_id=product.id) }}" method="POST" class="stock-form">
+    <input type="number" name="stock" value="{{ product.stock }}" min="0">
+    <button type="submit" class="update-btn">
+        <i class="fa-solid fa-rotate"></i>
+    </button>
+</form>
+
+        </div>
+
+        <form action="{{ url_for('delete_product', product_id=product.id) }}" method="POST">
+            <button class="delete-btn">
+                <i class="fa-solid fa-trash"></i> Remove
+            </button>
+        </form>
+    </div>
+</div>
+
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+    <h2><i class="fa-solid fa-chart-line"></i> Total Delivered Revenue</h2>
+    <h1 style="color:#22c55e;">₹{{ gross_revenue }}</h1>
+</div>
+
+<div class="card">
+    <h2><i class="fa-solid fa-chart-line"></i> Earnings Summary</h2>
+
+    <p><strong>Gross Revenue:</strong> ₹{{ gross_revenue }}</p>
+    <p style="color:#ef4444;">
+        <strong>Platform Commission ({{ commission_rate }}%):</strong>₹{{ platform_commission }}
+    </p>
+    <p style="color:#22c55e; font-size:20px;">
+        <strong>Your Net Earnings:</strong> ₹{{ vendor_net_earnings }}
+    </p>
+</div>
+
+    <!-- ORDERS -->
+<div class="card">
+    <h2><i class="fa-solid fa-receipt"></i> Incoming Orders</h2>
+
+    {% if orders %}
+        {% for order, item_status in orders %}
+            <div class="order-card">
+                <p><strong>Order ID:</strong> #{{ order.id }}</p>
+                <p><strong>Total:</strong> ₹{{ order.total_price }}</p>
+                <p><strong>Order Status:</strong> {{ order.status }}</p>
+                {% if order.status == "cancelled" %}
+    <p style="color:#ef4444; font-weight:bold;">
+        ❌ Cancelled by Customer
+    </p>
+{% endif %}
+
+
+<p><strong>Your Approval:</strong>
+    {% if item_status == "approved" %}
+        <span style="color:green;">✅ Approved (Waiting for other vendors)</span>
+    {% elif item_status == "pending" %}
+        <span style="color:orange;">⏳ Pending your approval</span>
+    {% elif item_status == "rejected" %}
+        <span style="color:red;">❌ You rejected this</span>
+    {% endif %}
+</p>
+<div style="margin-top:10px;">
+    <strong>Your Items:</strong>
+    {% for item in order.items %}
+        {% if item.vendor_id == vendor.id %}
+            <p>
+                {{ item.product.name }} (Qty {{ item.quantity }})
+                {% if item.status == "cancelled" %}
+                    <span style="color:#ef4444;"> Order Cancelled</span>
+                {% endif %}
+            </p>
+        {% endif %}
+    {% endfor %}
+</div>
+
+
+                {% if order.status == "placed" and item_status == "pending" %}
+                    <div class="order-actions">
+                        <form action="{{ url_for('approve_order', order_id=order.id) }}" method="POST">
+                            <button type="submit" class="approve-btn">
+                                <i class="fa-solid fa-check"></i> Approve
+                            </button>
+                        </form>
+
+                        <form action="{{ url_for('reject_order', order_id=order.id) }}" method="POST">
+                            <button type="submit" class="reject-btn">
+                                <i class="fa-solid fa-xmark"></i> Reject
+                            </button>
+                        </form>
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No orders yet.</p>
+    {% endif %}
+</div>
+
+
+
+</div>
+
+
+<script>
+function getVendorLocation() {
+    if (!navigator.geolocation) {
+        alert("Geolocation not supported");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(function(position) {
+        fetch("/save-vendor-location", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert("Location saved successfully!");
+                location.reload();
+            } else {
+                alert("Error saving location.");
+            }
+        });
+    }, function() {
+        alert("Permission denied or location unavailable.");
+    });
+}
+</script>
+
+</body>
+</html>

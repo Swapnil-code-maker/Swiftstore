@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Swift Store | Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='entry.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<div class="navbar">
+    <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none">
+            <defs>
+                <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#f97316"/>
+                    <stop offset="100%" stop-color="#6366f1"/>
+                </linearGradient>
+            </defs>
+            <path d="M3 12h13M16 12l3 3M16 12l3-3"
+                  stroke="url(#logoGradient)"
+                  stroke-width="2"
+                  class="draw-stroke"/>
+        </svg>
+        <div class="logo-container">
+  <img src="https://similarpng.com/_next/image?url=https%3A%2F%2Fimage.similarpng.com%2Ffile%2Fsimilarpng%2Fvery-thumbnail%2F2021%2F09%2FOnline-shopping-logo-design-template-on-transparent-background-PNG.png&w=1080&q=75" height="50px" width="50px" alt="SwiftStore Logo" class="swiftstore-logo">
+</div><span class="logo-text"><!-- SwiftStore Logo (free SVG) -->
+
+Swift Store</span>
+    </div>
+</div>
+
+<div class="main">
+    <h2>Select Your Portal</h2>
+    <p>Access your respective dashboard securely</p>
+
+    <div class="card-container">
+
+        <!-- CUSTOMER -->
+        <a href="/customer-login" class="card">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M1 1h4l2 14h13"
+                          class="draw-stroke"/>
+                    <circle cx="9" cy="21" r="1"/>
+                    <circle cx="20" cy="21" r="1"/>
+                </svg>
+            </div>
+            <h3>Customer</h3>
+            <p>Order & Track</p>
+        </a>
+
+        <!-- VENDOR -->
+        <a href="/vendor-login" class="card">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M3 9h18l-1 10H4L3 9z"
+                          class="draw-stroke"/>
+                    <path d="M7 9V5h10v4"/>
+                </svg>
+            </div>
+            <h3>Vendor</h3>
+            <p>Manage Inventory</p>
+        </a>
+
+        <!-- DELIVERY -->
+        <a href="/delivery-login" class="card">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <rect x="1" y="3" width="15" height="13"
+                          class="draw-stroke"/>
+                    <circle cx="5.5" cy="18.5" r="2.5"/>
+                    <circle cx="18.5" cy="18.5" r="2.5"/>
+                </svg>
+            </div>
+            <h3>Delivery Agent</h3>
+            <p>Assigned Deliveries</p>
+        </a>
+
+        <!-- ADMIN -->
+<a href="/admin-login" class="card">
+    <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L4 6v6c0 5 3.5 9.5 8 10 4.5-.5 8-5 8-10V6l-8-4z"
+                  class="draw-stroke"/>
+        </svg>
+    </div>
+    <h3>Admin</h3>
+    <p>Platform Management</p>
+</a>
+
+
+    </div>
+</div>
+
+
+
+</body>
+</html>

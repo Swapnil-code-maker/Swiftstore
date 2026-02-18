@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Delivery Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='delivery.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="flash-container">
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="flash-message {{ category }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+</div>
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+    <div class="brand">
+        <img src="https://image.similarpng.com/file/similarpng/very-thumbnail/2021/09/Online-shopping-logo-design-template-on-transparent-background-PNG.png" class="logo">
+        <h1>SwiftStore Delivery</h1>
+    </div>
+
+    <a href="{{ url_for('logout') }}" class="logout-btn">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout
+    </a>
+</div>
+
+
+    <!-- STATS -->
+    <div class="stats">
+        <div class="stat-card">
+            <h3>Total Earnings</h3>
+            <p class="earnings-number">₹{{ earnings }}</p>
+        </div>
+    <div style="
+    background:#1e293b;
+    padding:20px;
+    border-radius:10px;
+    margin-bottom:20px;
+">
+    <h3>⭐ Delivery Performance</h3>
+
+    <p style="font-size:20px;">
+    {% for i in range(1,6) %}
+        {% if i <= avg_rating|int %}
+            ⭐
+        {% else %}
+            ☆
+        {% endif %}
+    {% endfor %}
+</p>
+
+<p>
+    {{ avg_rating }} / 5 ({{ total_ratings }} ratings)
+</p>
+
+
+    <p>
+        Total Ratings: {{ total_ratings }}
+    </p>
+</div>
+
+        <div class="stat-card">
+            <h3>Active Delivery</h3>
+            <p>
+                {% if active_order %}
+                    Order #{{ active_order.order.id }}
+                {% else %}
+                    None
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- ACTIVE DELIVERY -->
+    {% if active_order %}
+<div class="card active-card">
+    <h2><i class="fa-solid fa-location-arrow"></i> Active Delivery</h2>
+
+    <p><strong>Order ID:</strong> #{{ active_order.order.id }}</p>
+    <p><strong>Total:</strong> ₹{{ active_order.order.total_price }}</p>
+
+    {% set status = active_order.order.status %}
+
+    {% if status == "assigned" %}
+        <form action="{{ url_for('pickup_order', order_id=active_order.order.id) }}" method="POST">
+            <button class="deliver-btn">📦 Pickup Order</button>
+        </form>
+
+    {% elif status == "picked_up" %}
+        <form action="{{ url_for('start_delivery', order_id=active_order.order.id) }}" method="POST">
+            <button class="deliver-btn">🚚 Start Delivery</button>
+        </form>
+
+    {% elif status == "out_for_delivery" %}
+    <form action="{{ url_for('verify_delivery', order_id=active_order.order.id) }}" method="POST">
+        
+        <input 
+            type="text" 
+            name="otp" 
+            placeholder="Enter 6-digit OTP" 
+            maxlength="6"
+            required
+            style="
+                padding:8px;
+                margin-bottom:10px;
+                border-radius:6px;
+                border:1px solid #ccc;
+                width:180px;
+            "
+        >
+
+        <button class="deliver-btn">
+            🔐 Verify & Deliver
+        </button>
+ </form>
+
+<form action="{{ url_for('resend_otp', order_id=active_order.order.id) }}" 
+      method="POST" 
+      style="display:inline-block; margin-left:10px;">
+
+    <button type="submit" 
+            style="
+                background:#f59e0b;
+                color:white;
+                padding:8px 14px;
+                border:none;
+                border-radius:6px;
+                cursor:pointer;
+            ">
+        🔄 Resend OTP
+    </button>
+
+</form>
+
+    </form>
+{% endif %}
+
+
+    <div id="map" style="height:400px; margin-top:20px; border-radius:10px;"></div>
+</div>
+{% endif %}
+
+
+    <!-- AVAILABLE ORDERS -->
+    <div class="card">
+        <h2><i class="fa-solid fa-box"></i> Available Orders</h2>
+
+        {% if available_orders %}
+            {% for item in available_orders %}
+                <div class="order-card">
+                    <p><strong>Order:</strong> #{{ item.order.id }}</p>
+                    <p><strong>Total:</strong> ₹{{ item.order.total_price }}</p>
+                    <p>
+                        <strong>Distance:</strong>
+                        {% if item.distance %}
+                            {{ item.distance }} km
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                    </p>
+
+                    <form action="{{ url_for('accept_order', order_id=item.order.id) }}" method="POST">
+                        <button class="accept-btn">
+                            <i class="fa-solid fa-handshake"></i> Accept
+                        </button>
+                    </form>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No orders available.</p>
+        {% endif %}
+    </div>
+
+    <!-- COMPLETED DELIVERIES -->
+    <div class="card">
+        <h2><i class="fa-solid fa-clock-rotate-left"></i> Completed Deliveries</h2>
+
+        {% if completed_orders %}
+            {% for order in completed_orders %}
+                <div class="order-card completed">
+                    <p><strong>Order:</strong> #{{ order.id }}</p>
+                    <p><strong>Total:</strong> ₹{{ order.total_price }}</p>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No completed deliveries yet.</p>
+        {% endif %}
+    </div>
+
+
+<script>
+if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(function(position) {
+
+        fetch("/update-delivery-location", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log("Location updated");
+        })
+        .catch(error => {
+            console.error("Error updating location:", error);
+        });
+
+    }, function(error) {
+        console.log("Geolocation error:", error);
+    }, {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 10000
+    });
+}
+</script>
+
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+{% if active_order %}
+
+const ORDER_ID = {{ active_order.order.id }};
+let map = L.map('map');
+let deliveryMarker, customerMarker, vendorMarker, routeLine;
+let mapInitialized = false;
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+function updateMap() {
+    fetch(`/order-location-data/${ORDER_ID}`)
+        .then(res => res.json())
+        .then(data => {
+
+            const customer = data.customer;
+            const vendors = data.vendors;
+            const delivery = data.delivery;
+
+            if (!customer || !customer.lat || !customer.lon) return;
+
+            // Initialize map once
+            if (!mapInitialized) {
+                map.setView([customer.lat, customer.lon], 14);
+                mapInitialized = true;
+            }
+
+            // Customer Marker
+            if (!customerMarker) {
+                customerMarker = L.marker([customer.lat, customer.lon])
+                    .addTo(map)
+                    .bindPopup("📍 Customer");
+            }
+
+           // 🔥 Vendor Markers (Different Emojis)
+if (vendors && vendors.length > 0) {
+
+    vendors.forEach((v, index) => {
+
+        let emoji = "🏪";  // default
+
+        if (index === 0) {
+            emoji = "🏬";  // Vendor 1
+        } 
+        else if (index === 1) {
+            emoji = "🛒";  // Vendor 2
+        }
+        else {
+            emoji = "🏪";  // fallback for more vendors
+        }
+
+        L.marker([v.lat, v.lon])
+            .addTo(map)
+            .bindPopup(emoji + " " + v.name);
+    });
+
+}
+
+
+            // Delivery Marker
+            if (delivery && delivery.lat && delivery.lon) {
+
+                if (!deliveryMarker) {
+                    deliveryMarker = L.marker([delivery.lat, delivery.lon])
+                        .addTo(map)
+                        .bindPopup("🚚 You");
+                } else {
+                    deliveryMarker.setLatLng([delivery.lat, delivery.lon]);
+                }
+
+                // Decide destination
+                let destinationLat = null;
+                let destinationLon = null;
+
+                if (data.status === "assigned") {
+                    if (vendor && vendor.lat && vendor.lon) {
+                        destinationLat = vendor.lat;
+                        destinationLon = vendor.lon;
+                    }
+                } 
+                else if (
+                    data.status === "picked_up" ||
+                    data.status === "out_for_delivery"
+                ) {
+                    if (customer && customer.lat && customer.lon) {
+                        destinationLat = customer.lat;
+                        destinationLon = customer.lon;
+                    }
+                }
+
+                if (destinationLat && destinationLon) {
+
+                    fetch(`https://router.project-osrm.org/route/v1/driving/${delivery.lon},${delivery.lat};${destinationLon},${destinationLat}?overview=full&geometries=geojson`)
+                        .then(res => res.json())
+                        .then(routeData => {
+
+                            if (routeData.routes && routeData.routes.length > 0) {
+
+                                if (routeLine) {
+                                    map.removeLayer(routeLine);
+                                }
+
+                                routeLine = L.geoJSON(routeData.routes[0].geometry, {
+                                    style: { color: '#22c55e', weight: 5 }
+                                }).addTo(map);
+
+                                map.fitBounds(routeLine.getBounds());
+                            }
+
+                        });
+
+                }
+            }
+
+        });
+}
+
+updateMap();
+setInterval(updateMap, 8000);
+
+{% endif %}
+</script>
+
+
+
+
+</body>
+</html>

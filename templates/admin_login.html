@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Swift Store | God Mode Access</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Segoe UI', sans-serif;
+    background: radial-gradient(circle at center, #111827 0%, #000000 80%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+/* Animated Grid Background */
+body::before {
+    content: "";
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    background-image:
+        linear-gradient(rgba(99,102,241,0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(249,115,22,0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: moveGrid 20s linear infinite;
+}
+
+@keyframes moveGrid {
+    from { transform: translate(0,0); }
+    to { transform: translate(-50px,-50px); }
+}
+
+.login-container {
+    position: relative;
+    width: 420px;
+    padding: 45px;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    box-shadow: 0 0 60px rgba(99,102,241,0.4);
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.1);
+    animation: fadeIn 1.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.logo {
+    width: 90px;
+    margin-bottom: 15px;
+    animation: pulse 3s infinite;
+    filter: drop-shadow(0 0 15px rgba(99,102,241,0.8));
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.title {
+    font-size: 24px;
+    font-weight: bold;
+    background: linear-gradient(90deg, #6366f1, #f97316);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-bottom: 25px;
+}
+
+input {
+    width: 100%;
+    padding: 14px;
+    margin: 10px 0;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    font-size: 14px;
+    outline: none;
+}
+
+input::placeholder {
+    color: #94a3b8;
+}
+
+button {
+    width: 100%;
+    padding: 14px;
+    margin-top: 15px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #6366f1, #f97316);
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(249,115,22,0.6);
+}
+
+.security-text {
+    font-size: 11px;
+    margin-top: 20px;
+    color: #64748b;
+}
+
+.error {
+    margin-top: 10px;
+    color: #f87171;
+    font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="login-container">
+
+    <img src="https://image.similarpng.com/file/similarpng/very-thumbnail/2021/09/Online-shopping-logo-design-template-on-transparent-background-PNG.png"
+         class="logo"
+         alt="Swift Store Logo">
+
+    <div class="title">Swift Store</div>
+    <div class="subtitle">ADMIN ACCESS</div>
+
+    <form method="POST">
+        <input type="email" name="email" placeholder="Admin Email" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <button type="submit">Unlock Control Panel</button>
+    </form>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="error">{{ messages[0] }}</div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="security-text">
+        Secure System • Authorized Personnel Only
+    </div>
+
+</div>
+
+</body>
+</html>

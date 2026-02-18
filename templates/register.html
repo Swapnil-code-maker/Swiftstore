@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Account</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+</head>
+<body>
+
+<div class="login-box">
+    <h2>Create {{ role.capitalize() }} Account</h2>
+
+    <form method="POST">
+       
+        <div class="input-group">
+    <input type="text" name="full_name" placeholder="Full Name" required>
+        </div>
+
+
+        <div class="input-group">
+            <input type="email" name="email" placeholder="Email" required>
+        </div>
+
+        <div class="input-group">
+            <input type="password" name="password" placeholder="Password" required>
+        </div>
+
+        {% if role == "vendor" %}
+<div class="input-group">
+    <input type="text" name="company_name" placeholder="Shop Name" required>
+</div>
+
+<div class="input-group">
+    <input type="text" name="address" placeholder="Shop Address (Optional)" >
+</div>
+{% endif %}
+
+
+        <button type="submit">Create Account</button>
+    </form>
+
+    <a href="/{{ role }}-login" class="back-link">
+        Already have an account? Login
+    </a>
+</div>
+
+
+
+</body>
+</html>
