@@ -38,7 +38,6 @@ def send_email(to_email, subject, html_body):
     sender_email = "swiftstore.noreply.official@gmail.com"
     sender_password = os.environ.get("SWIFTSTORE_EMAIL_PASSWORD")
 
-    print("DEBUG PASSWORD:", sender_password)
 
     if not sender_password:
         print("❌ EMAIL PASSWORD NOT SET")
@@ -338,7 +337,7 @@ def assign_delivery_agent(order):
     # NORMALIZATION VALUES
     # ------------------------------
     max_distance = max(a["distance"] for a in agent_data) or 1
-    max_workload = 2  # since we cap at 2
+    max_workload = 2
     max_rating = 5
 
     # ------------------------------
@@ -350,7 +349,6 @@ def assign_delivery_agent(order):
         workload_penalty = data["active_orders"] / max_workload
         rating_bonus = (max_rating - data["rating"]) / max_rating
 
-        # 🎯 Weighted Multi-Factor Optimization
         score = (
             0.6 * normalized_distance +
             0.25 * workload_penalty +
@@ -364,12 +362,34 @@ def assign_delivery_agent(order):
     if not best_agent:
         return False
 
+    # ------------------------------
+    # ASSIGN DELIVERY
+    # ------------------------------
     order.delivery_id = best_agent.id
     order.status = "assigned"
     db.session.commit()
 
-    return True
+    # ------------------------------
+    # 📧 SEND EMAIL TO DELIVERY AGENT
+    # ------------------------------
+    html = build_email_template(
+        "New Delivery Assigned 🚚",
+        f"""
+        Hi {best_agent.full_name},<br><br>
+        You have been assigned a new delivery.<br><br>
+        <strong>Order ID:</strong> #{order.id}<br>
+        <strong>Total Amount:</strong> ₹{order.total_price}<br><br>
+        Please login to your dashboard to view details.
+        """
+    )
 
+    send_email(
+        best_agent.email,
+        "New Delivery Assigned - SwiftStore",
+        html
+    )
+
+    return True
 
 
 
@@ -1601,7 +1621,7 @@ def approve_order(order_id):
     vendor_id = session["user_id"]
     order = Order.query.get_or_404(order_id)
 
-    # 🚫 Block only if fully cancelled or delivered
+    # 🚫 Block if cancelled or delivered
     if order.status in ["cancelled", "delivered"]:
         return "Order already completed", 400
 
@@ -1614,27 +1634,17 @@ def approve_order(order_id):
     if not vendor_items:
         return "Unauthorized", 403
 
-    # 🚫 Prevent double approval
-    already_approved = all(item.status == "approved" for item in vendor_items)
-    if already_approved:
-        return redirect(url_for("vendor_dashboard"))
-
-    # ✅ Mark only this vendor's items as approved
+    # ✅ Mark this vendor’s items as approved
     for item in vendor_items:
         if item.status == "pending":
             item.status = "approved"
 
     db.session.commit()
 
-    # 🔎 Re-check item states AFTER updating
+    # 🔎 Check global order item states
     pending_exists = OrderItem.query.filter_by(
         order_id=order.id,
         status="pending"
-    ).first()
-
-    approved_exists = OrderItem.query.filter_by(
-        order_id=order.id,
-        status="approved"
     ).first()
 
     rejected_exists = OrderItem.query.filter_by(
@@ -1642,34 +1652,35 @@ def approve_order(order_id):
         status="rejected"
     ).first()
 
-    # ❌ If ANY rejected → whole order rejected
+    # ❌ If any rejected → cancel whole order
     if rejected_exists:
-        order.status = "rejected"
+        order.status = "cancelled"
         db.session.commit()
+        return redirect(url_for("vendor_dashboard"))
 
-    # ✅ If no pending AND no rejected → fully approved
-    elif not pending_exists:
-        order.status = "approved"
+    # 🚚 If no pending items → assign delivery
+    if not pending_exists and not order.delivery_id:
 
-        # 🚚 Assign delivery if not already assigned
-        if not order.delivery_id:
-            assigned = assign_delivery_agent(order)
-            if not assigned:
-                return "No delivery agents available", 400
+        assigned = assign_delivery_agent(order)
 
-            # 📧 Notify customer
-            customer = User.query.get(order.customer_id)
+        if not assigned:
+            # Do NOT break system — just show message
+            flash("No delivery agents available right now.", "warning")
+            return redirect(url_for("vendor_dashboard"))
 
-            html = build_email_template(
-                "Your Order is Being Prepared 🚀",
-                f"""
-                Hi {customer.email},<br><br>
-                All vendors have approved your order <strong>#{order.id}</strong>.<br><br>
-                A delivery partner has been assigned and will pick up your items soon.
-                """
-            )
+        # 📧 Notify customer
+        customer = User.query.get(order.customer_id)
 
-            send_email(customer.email, "Order Approved - SwiftStore", html)
+        html = build_email_template(
+            "Your Order is Being Prepared 🚀",
+            f"""
+            Hi {customer.full_name or customer.email},<br><br>
+            All vendors have approved your order <strong>#{order.id}</strong>.<br><br>
+            A delivery partner has been assigned and will pick up your items soon.
+            """
+        )
+
+        send_email(customer.email, "Order Approved - SwiftStore", html)
 
         db.session.commit()
 
@@ -2119,7 +2130,7 @@ if __name__ == "__main__":
         db.create_all()
 
         admin_email = "swiftstore.noreply.official@gmail.com"
-        admin_password = "admin123"
+        admin_password = "admin123" # demo only
 
         admin_user = User.query.filter_by(email=admin_email).first()
 

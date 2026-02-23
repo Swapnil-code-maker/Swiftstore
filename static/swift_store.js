@@ -29,6 +29,13 @@ function addToCartWithQty(id, name, price, vendorId) {
 
 function updateCartUI() {
 
+    // 🔥 ALWAYS sync localStorage FIRST
+    if (cart.length > 0) {
+        localStorage.setItem("swiftCart", JSON.stringify(cart));
+    } else {
+        localStorage.removeItem("swiftCart");
+    }
+
     const cartCount = document.querySelector(".cart-count");
     const cartContent = document.querySelector(".cart-content");
     const cartBottom = document.querySelector(".cart-bottom");
@@ -116,13 +123,6 @@ function updateCartUI() {
             </button>
         </div>
     `;
-    if (cart.length > 0) {
-    localStorage.setItem("swiftCart", JSON.stringify(cart));
-} else {
-    localStorage.removeItem("swiftCart");
-}
-
-
 }
 
 
@@ -176,24 +176,16 @@ function placeOrder() {
     .then(data => {
         if (data.success) {
 
-    // 1️⃣ Clear JS cart
-    cart = [];
+            cart = [];
+            localStorage.removeItem("swiftCart");
+            updateCartUI();
+            location.reload();
 
-    // 2️⃣ Clear localStorage
-    localStorage.removeItem("swiftCart");
-
-    // 3️⃣ Update UI (now empty)
-    updateCartUI();
-
-    // 4️⃣ Reload to trigger Flask notification toast
-    location.reload();
-}
- else {
+        } else {
             alert(data.error || "Order failed");
         }
     });
 }
-
 
 
 /* ---------------- PRODUCT PAGE QTY ---------------- */
@@ -205,6 +197,10 @@ function changeQuantity(productId, delta) {
     if (current < 1) current = 1;
     qtySpan.innerText = current;
 }
+
+
+/* ---------------- INIT ---------------- */
+
 document.addEventListener("DOMContentLoaded", function() {
     updateCartUI();
 });

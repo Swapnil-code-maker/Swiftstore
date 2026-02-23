@@ -338,7 +338,7 @@ def assign_delivery_agent(order):
     # NORMALIZATION VALUES
     # ------------------------------
     max_distance = max(a["distance"] for a in agent_data) or 1
-    max_workload = 2  # since we cap at 2
+    max_workload = 2
     max_rating = 5
 
     # ------------------------------
@@ -350,7 +350,6 @@ def assign_delivery_agent(order):
         workload_penalty = data["active_orders"] / max_workload
         rating_bonus = (max_rating - data["rating"]) / max_rating
 
-        # 🎯 Weighted Multi-Factor Optimization
         score = (
             0.6 * normalized_distance +
             0.25 * workload_penalty +
@@ -364,12 +363,34 @@ def assign_delivery_agent(order):
     if not best_agent:
         return False
 
+    # ------------------------------
+    # ASSIGN DELIVERY
+    # ------------------------------
     order.delivery_id = best_agent.id
     order.status = "assigned"
     db.session.commit()
 
-    return True
+    # ------------------------------
+    # 📧 SEND EMAIL TO DELIVERY AGENT
+    # ------------------------------
+    html = build_email_template(
+        "New Delivery Assigned 🚚",
+        f"""
+        Hi {best_agent.full_name},<br><br>
+        You have been assigned a new delivery.<br><br>
+        <strong>Order ID:</strong> #{order.id}<br>
+        <strong>Total Amount:</strong> ₹{order.total_price}<br><br>
+        Please login to your dashboard to view details.
+        """
+    )
 
+    send_email(
+        best_agent.email,
+        "New Delivery Assigned - SwiftStore",
+        html
+    )
+
+    return True
 
 
 
