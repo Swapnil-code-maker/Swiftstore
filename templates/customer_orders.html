@@ -106,7 +106,34 @@
                 {{ order.status.replace("_", " ").title() }}
             </span>
         </p>
+       <p>
+    <strong>Payment:</strong>
 
+    {% if order.payment_status == "paid" %}
+        <span style="color:#22c55e;">Paid</span>
+
+    {% elif order.payment_method == "ONLINE" %}
+        <span style="color:#facc15;">Pending (Online)</span>
+
+        <!-- 🔥 PAY NOW BUTTON -->
+        <form method="GET" action="/pay/{{ order.id }}" style="margin-top:8px;">
+            <button style="
+                padding:6px 14px;
+                background:#22c55e;
+                color:white;
+                border:none;
+                border-radius:6px;
+                cursor:pointer;
+                font-weight:600;
+            ">
+                💳 Pay Now
+            </button>
+        </form>
+
+    {% else %}
+        <span style="color:#f59e0b;">Pay on Delivery</span>
+    {% endif %}
+</p>
         {% if order.status != "cancelled" %}
         <a href="{{ url_for('track_order', order_id=order.id) }}"
            class="track-btn">

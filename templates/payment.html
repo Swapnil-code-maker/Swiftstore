@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SwiftStore Payment</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: radial-gradient(circle at top, #020617, #000);
+    color: white;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 30px;
+}
+
+.logo {
+    height: 45px;
+}
+
+.brand {
+    font-size: 22px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #8b5cf6, #f97316);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: calc(100vh - 80px);
+}
+
+.card {
+    width: 380px;
+    background: rgba(30,41,59,0.85);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 35px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.8);
+    text-align: center;
+}
+
+.amount {
+    font-size: 42px;
+    font-weight: bold;
+    margin: 15px 0;
+    background: linear-gradient(135deg,#22c55e,#4ade80);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.pay-btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 16px;
+    font-size: 17px;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+    background: linear-gradient(135deg,#6366f1,#8b5cf6);
+    transition: 0.3s;
+}
+
+.pay-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 15px 40px rgba(99,102,241,0.5);
+}
+
+.note {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #94a3b8;
+}
+
+.back {
+    margin-top: 15px;
+    display: block;
+    color: #3b82f6;
+    text-decoration: none;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<img src="https://image.similarpng.com/file/similarpng/very-thumbnail/2021/09/Online-shopping-logo-design-template-on-transparent-background-PNG.png"
+class="logo">
+<div class="brand">SwiftStore</div>
+</header>
+
+<div class="container">
+<div class="card">
+
+<h2>💳 Secure Payment</h2>
+<p>Order #{{ order.id }}</p>
+
+<div class="amount">₹{{ order.total_price }}</div>
+
+<button class="pay-btn" onclick="payNow()">
+💳 Pay Securely
+</button>
+
+<div class="note">
+You will be redirected to secure Razorpay gateway
+</div>
+
+<a href="/my-orders" class="back">← Back to Orders</a>
+
+</div>
+</div>
+
+<script>
+function showToast(message, type="error") {
+
+    // remove existing toast
+    const oldToast = document.getElementById("toast-msg");
+    if (oldToast) oldToast.remove();
+
+    const toast = document.createElement("div");
+    toast.id = "toast-msg";
+
+    toast.innerText = message;
+
+    toast.style.position = "fixed";
+    toast.style.top = "20px";
+    toast.style.left = "50%";
+    toast.style.transform = "translateX(-50%)";
+    toast.style.padding = "12px 20px";
+    toast.style.borderRadius = "8px";
+    toast.style.zIndex = "9999";
+    toast.style.boxShadow = "0 10px 30px rgba(0,0,0,0.5)";
+    toast.style.color = "white";
+
+    // 🔥 dynamic color
+    if (type === "success") {
+        toast.style.background = "#22c55e"; // green
+    } else {
+        toast.style.background = "#ef4444"; // red
+    }
+
+    document.body.appendChild(toast);
+
+    // auto remove
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+function payNow() {
+
+    const btn = document.querySelector(".pay-btn");
+    btn.innerText = "Processing...";
+
+    fetch("/create-razorpay-order/{{ order.id }}")
+    .then(res => res.json())
+    .then(data => {
+
+        // 🔥 HANDLE EXPIRED ORDER
+        if (data.expired) {
+            showToast(data.message, "error");
+            window.location.href = "/my-orders";
+            return;
+        }
+
+        console.log("Razorpay Order Data:", data);
+
+        const options = {
+            key: "rzp_test_1234567890",  // replace later with real key
+            amount: data.amount,
+            currency: "INR",
+            name: "SwiftStore",
+            description: "Order Payment",
+            order_id: data.id,
+
+            handler: function (response) {
+
+                fetch("/verify-payment", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_signature: response.razorpay_signature,
+                        order_id: {{ order.id }}
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast("Payment Verified ✅", "success");
+                        window.location.href = "/my-orders";
+                    } else {
+                        showToast("Payment verification failed ❌", "error");
+                        btn.innerText = "💳 Pay Securely";
+                    }
+                })
+                .catch(err => {
+                    console.error("Verification error:", err);
+                    showToast("Payment done but verification failed", "error");
+                    btn.innerText = "💳 Pay Securely";
+                });
+            },
+
+            theme: {
+                color: "#22c55e"
+            }
+        };
+
+        const rzp = new Razorpay(options);
+
+        // 🔥 Payment failure handling
+        rzp.on('payment.failed', function (response){
+            console.error("Payment Failed:", response);
+            showToast("Payment Failed ❌", "error");
+            btn.innerText = "💳 Pay Securely";
+        });
+
+        rzp.open();
+    })
+    .catch(err => {
+        console.error("Error creating Razorpay order:", err);
+        showToast("Something went wrong. Check console.", "error");
+        btn.innerText = "💳 Pay Securely";
+    });
+}
+window.onload = function() {
+
+    const expired = {{ expired|default(false)|tojson }};
+    const message = {{ message|default("")|tojson }};
+
+    if (expired) {
+        showToast(message, "error");
+
+        setTimeout(() => {
+            window.location.href = "/my-orders";
+        }, 2000);
+    }
+};
+</script>
+
+</body>
+</html>

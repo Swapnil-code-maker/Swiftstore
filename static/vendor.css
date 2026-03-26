@@ -373,3 +373,30 @@ h2 {
     transform: translateY(-3px);
     box-shadow: 0 5px 15px rgba(239, 68, 68, 0.5);
 }
+/* ================= PERFORMANCE CARD ================= */
+.performance-card p {
+    margin: 10px 0;
+    font-size: 15px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.performance-card strong {
+    color: #cbd5f5;
+}
+
+/* Metric colors */
+.metric-blue {
+    color: #3b82f6;
+    font-weight: bold;
+}
+
+.metric-green {
+    color: #22c55e;
+    font-weight: bold;
+}
+
+.metric-red {
+    color: #ef4444;
+    font-weight: bold;
+}

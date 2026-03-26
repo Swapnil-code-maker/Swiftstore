@@ -29,7 +29,6 @@ function addToCartWithQty(id, name, price, vendorId) {
 
 function updateCartUI() {
 
-    // 🔥 ALWAYS sync localStorage FIRST
     if (cart.length > 0) {
         localStorage.setItem("swiftCart", JSON.stringify(cart));
     } else {
@@ -52,8 +51,6 @@ function updateCartUI() {
 
     cartCount.textContent = totalItems;
 
-    /* ---------------- EMPTY CART ---------------- */
-
     if (cart.length === 0) {
         cartContent.innerHTML = `
             <div class="empty-cart">
@@ -64,8 +61,6 @@ function updateCartUI() {
         cartBottom.innerHTML = "";
         return;
     }
-
-    /* ---------------- CART ITEMS ---------------- */
 
     cartContent.innerHTML = cart.map(item => `
         <div class="cart-item">
@@ -83,9 +78,7 @@ function updateCartUI() {
         </div>
     `).join("");
 
-    /* ---------------- BILLING ---------------- */
-
-    let deliveryFee = subtotal > 199 ? 0 : 25;
+    let deliveryFee = subtotal > 499 ? 0 : 25;
     let platformFee = subtotal * 0.02;
     let total = subtotal + deliveryFee + platformFee;
 
@@ -118,7 +111,25 @@ function updateCartUI() {
                 <span>₹${total.toFixed(2)}</span>
             </div>
 
-            <button class="checkout-btn" onclick="placeOrder()">
+            <!-- 🔥 NEW CLEAN PAYMENT SELECT -->
+            <div style="margin-top:12px;">
+                <select id="payment_method" style="
+                    width:100%;
+                    padding:10px;
+                    border-radius:10px;
+                    border:none;
+                    background:#1e293b;
+                    color:white;
+                    font-weight:500;
+                ">
+                    <option value="COD">💵 Cash on Delivery</option>
+                    <option value="ONLINE">💳 Pay Online (UPI)</option>
+                </select>
+            </div>
+
+            <!-- 🔥 SINGLE BUY BUTTON -->
+            <button class="checkout-btn" onclick="placeOrder()" 
+                style="margin-top:12px;">
                 Buy Now
             </button>
         </div>
@@ -160,6 +171,8 @@ function placeOrder() {
         return;
     }
 
+    const method = document.getElementById("payment_method").value;
+
     fetch("/create-order", {
         method: "POST",
         headers: {
@@ -169,13 +182,22 @@ function placeOrder() {
             items: cart.map(item => ({
                 product_id: item.id,
                 quantity: item.quantity
-            }))
+            })),
+            payment_method: method   // ✅ auto selected
         })
     })
     .then(res => res.json())
     .then(data => {
+
         if (data.success) {
 
+            // 💳 ---------------- RAZORPAY ONLINE PAYMENT ----------------
+            if (method === "ONLINE" && data.redirect) {
+    window.location.href = data.redirect;
+    return;
+}
+
+            // 💵 ---------------- COD FLOW (UNCHANGED) ----------------
             cart = [];
             localStorage.removeItem("swiftCart");
             updateCartUI();

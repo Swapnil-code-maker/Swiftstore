@@ -1,12 +1,15 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
+import razorpay
+client = razorpay.Client(auth=("YOUR_KEY_ID", "YOUR_SECRET"))
 import math
 import requests
 import os
 import smtplib
 import secrets
 import time
+import os
 from datetime import datetime
 from datetime import date
 
@@ -185,7 +188,12 @@ class Order(db.Model):
     delivery_otp = db.Column(db.String(6))
     otp_created_at = db.Column(db.DateTime)
 
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    payment_method = db.Column(db.String(20), default="COD")
+    payment_status = db.Column(db.String(20), default="pending")
+    paid_at = db.Column(db.DateTime)
+    razorpay_order_id = db.Column(db.String(100))
+    # ⏱ IMPORTANT FOR PAYMENT TIMER
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     items = db.relationship("OrderItem", backref="order", lazy=True)
 
@@ -547,8 +555,10 @@ def admin_login():
     return render_template("admin_login.html")
 
 
+
+
 # -------------------- CUSTOMER DASHBOARD --------------------
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, or_
 
 @app.route("/customer-dashboard")
 def customer_dashboard():
@@ -561,6 +571,7 @@ def customer_dashboard():
     # 🔎 GET FILTER PARAMS
     selected_vendor_id = request.args.get("vendor_id", type=int)
     search_query = request.args.get("search", type=str)
+    category_filter = request.args.get("category", type=str)
     sort_by = request.args.get("sort", type=str)
     page = request.args.get("page", 1, type=int)
 
@@ -579,25 +590,45 @@ def customer_dashboard():
         else:
             query = query.filter(False)
 
-    # ---------------- Search ----------------
-    if search_query:
-        query = query.filter(
-            Product.name.ilike(f"%{search_query}%")
-        )
+    # ---------------- Category Filter ----------------
+    if category_filter:
+        query = query.filter(Product.category == category_filter)
 
-    # ---------------- Sorting ----------------
+    # ---------------- Search (Strict AND Logic) ----------------
+    if search_query:
+        words = search_query.split()
+
+        for word in words:
+            query = query.filter(
+                or_(
+                    Product.name.ilike(f"%{word}%"),
+                    Product.category.ilike(f"%{word}%")
+                )
+            )
+
+    # ---------------- Price Sorting ----------------
     if sort_by == "price_low":
         query = query.order_by(asc(Product.price))
     elif sort_by == "price_high":
         query = query.order_by(desc(Product.price))
 
-    # ---------------- Pagination ----------------
-    per_page = 8
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    products = pagination.items
+    # ---------------- Pagination Logic ----------------
+    if selected_vendor_id:
+        # Show ALL vendor products
+        products = query.all()
+        pagination = None
+    else:
+        per_page = 8
+        pagination = query.paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+        products = pagination.items
 
     vendors = User.query.filter_by(role="vendor").all()
 
+    # ---------------- Enrichment (Add Distance Info) ----------------
     enriched_products = []
 
     for product in products:
@@ -630,13 +661,13 @@ def customer_dashboard():
             "stock": product.stock
         })
 
-    # Distance sorting (after enrichment)
+    # ---------------- Distance Sorting (After Enrichment) ----------------
     if sort_by == "distance":
         enriched_products.sort(
             key=lambda x: x["distance"] if x["distance"] is not None else 9999
         )
 
-    # 🔔 Fetch unread notifications for this customer
+    # 🔔 Fetch unread notifications
     notifications = Notification.query.filter_by(
         user_id=session["user_id"],
         is_read=False
@@ -695,7 +726,7 @@ def delivery_dashboard():
 ) if total_ratings > 0 else 0
 
     earnings = sum(
-    25 + (order.total_price * 0.03)
+    25 + (order.total_price * 0.02)
     for order in completed_orders
 )
 
@@ -1030,6 +1061,11 @@ def verify_delivery(order_id):
     if order.status != "out_for_delivery":
         return "Invalid status", 400
 
+    # 🚫 BLOCK DELIVERY IF ONLINE PAYMENT NOT DONE
+    if order.payment_method == "ONLINE" and order.payment_status != "paid":
+        flash("Payment not completed ❌")
+        return redirect(url_for("delivery_dashboard"))
+
     entered_otp = request.form.get("otp")
 
     if not entered_otp:
@@ -1052,6 +1088,11 @@ def verify_delivery(order_id):
 
     # ✅ MARK ORDER DELIVERED
     order.status = "delivered"
+
+    # 💰 ONLY MARK PAID HERE FOR COD
+    if order.payment_method == "COD":
+        order.payment_status = "paid"
+        order.paid_at = datetime.utcnow()
 
     # ---------------- CREATE LEDGER ENTRIES (FIXED LOOP) ----------------
     for item in order.items:
@@ -1333,6 +1374,42 @@ def vendor_dashboard():
     from sqlalchemy import func
     from datetime import datetime, timedelta
 
+    # ================= NEW: PERFORMANCE METRICS =================
+
+    # 🔥 Top Selling Product
+    top_product = db.session.query(
+        Product.name,
+        func.sum(OrderItem.quantity).label("total_sold")
+    ).join(OrderItem, Product.id == OrderItem.product_id)\
+     .filter(OrderItem.vendor_id == vendor.id)\
+     .group_by(Product.id)\
+     .order_by(func.sum(OrderItem.quantity).desc())\
+     .first()
+
+    # 🔥 Total Items (for rate calculations)
+    total_items = db.session.query(OrderItem).filter_by(
+        vendor_id=vendor.id
+    ).count()
+
+    # 🔥 Successful (Delivered)
+    successful_items = db.session.query(OrderItem).join(Order)\
+    .filter(
+        OrderItem.vendor_id == vendor.id,
+        Order.status == "delivered"
+    ).count()
+
+    # 🔥 Rejected
+    rejected_items = db.session.query(OrderItem).filter_by(
+        vendor_id=vendor.id,
+        status="rejected"
+    ).count()
+
+    # 🔥 Rates
+    success_rate = round((successful_items / total_items) * 100, 2) if total_items else 0
+    rejection_rate = round((rejected_items / total_items) * 100, 2) if total_items else 0
+
+    # ================= EXISTING LOGIC =================
+
     # ---------------- GROSS REVENUE ----------------
     gross_revenue = db.session.query(
         func.sum(VendorLedger.gross_amount)
@@ -1371,24 +1448,22 @@ def vendor_dashboard():
     ).scalar() or 0
 
     # ---------------- WEEKLY EARNINGS ----------------
-    from datetime import datetime, timedelta
-
     today = datetime.utcnow()
 
     start_of_week = today - timedelta(days=today.weekday())
     start_of_week = start_of_week.replace(
-    hour=0,
-    minute=0,
-    second=0,
-    microsecond=0
-)
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0
+    )
 
     weekly_earnings = db.session.query(
-    func.sum(VendorLedger.net_amount)
-).filter(
-    VendorLedger.vendor_id == vendor.id,
-    VendorLedger.created_at >= start_of_week
-).scalar() or 0
+        func.sum(VendorLedger.net_amount)
+    ).filter(
+        VendorLedger.vendor_id == vendor.id,
+        VendorLedger.created_at >= start_of_week
+    ).scalar() or 0
 
     # ---------------- MONTHLY REVENUE ----------------
     monthly_revenue = db.session.query(
@@ -1402,11 +1477,14 @@ def vendor_dashboard():
         func.strftime("%Y-%m", VendorLedger.created_at)
     ).all()
 
+    # ================= FINAL RETURN =================
     return render_template(
         "vendor_dashboard.html",
         products=products,
         vendor=vendor,
         orders=orders,
+
+        # Existing
         gross_revenue=round(gross_revenue, 2),
         platform_commission=round(platform_commission, 2),
         vendor_net_earnings=round(vendor_net_earnings, 2),
@@ -1414,7 +1492,12 @@ def vendor_dashboard():
         pending_amount=round(pending_amount, 2),
         settled_amount=round(settled_amount, 2),
         weekly_earnings=round(weekly_earnings, 2),
-        commission_rate=5
+        commission_rate=5,
+
+        # 🔥 NEW FEATURES
+        top_product=top_product,
+        success_rate=success_rate,
+        rejection_rate=rejection_rate
     )
 
 # -------------------- SETTLE VENDOR PAYOUT --------------------
@@ -1516,6 +1599,7 @@ def create_order():
 
     data = request.get_json()
     items = data["items"]
+    payment_method = data.get("payment_method", "COD")
 
     customer = User.query.get(session["user_id"])
 
@@ -1524,7 +1608,9 @@ def create_order():
         customer_lat=customer.latitude,
         customer_lon=customer.longitude,
         status="placed",
-        total_price=0
+        total_price=0,
+        payment_method=payment_method,
+        payment_status="pending"
     )
 
     db.session.add(new_order)
@@ -1546,17 +1632,16 @@ def create_order():
 
         involved_vendors.add(product.vendor_id)
 
-        commission_rate = 0.05
+        commission_rate = 0.035
 
         order_item = OrderItem(
-        order_id=new_order.id,
-        product_id=product.id,
-        vendor_id=product.vendor_id,
-        quantity=quantity,
-        price_at_purchase=product.price,
-        commission_rate=commission_rate
-)
-
+            order_id=new_order.id,
+            product_id=product.id,
+            vendor_id=product.vendor_id,
+            quantity=quantity,
+            price_at_purchase=product.price,
+            commission_rate=commission_rate
+        )
 
         db.session.add(order_item)
 
@@ -1578,8 +1663,7 @@ def create_order():
 
         send_email(vendor.email, "New Order - SwiftStore", html)
 
-
-    # 📧 Send confirmation email to customer (NEW - nothing removed)
+    # 📧 Send confirmation email to customer
     customer_html = build_email_template(
         "Order Placed Successfully 🛒",
         f"""
@@ -1596,8 +1680,7 @@ def create_order():
         customer_html
     )
 
-
-    # 🔔 Create notification for customer (ONLY ONCE)
+    # 🔔 Create notification for customer
     notification = Notification(
         user_id=customer.id,
         message=f"Your order #{new_order.id} has been placed successfully!"
@@ -1605,8 +1688,19 @@ def create_order():
 
     db.session.add(notification)
     db.session.commit()
-    
-    return jsonify({"success": True})
+
+    # 💳 ---------------- RAZORPAY PAYMENT ----------------
+    if payment_method == "ONLINE":
+        return jsonify({
+        "success": True,
+        "redirect": f"/pay/{new_order.id}"
+    })
+
+    # 💵 ---------------- COD FLOW ----------------
+    return jsonify({
+        "success": True,
+        "order_id": new_order.id
+    })
 
 
 
@@ -2121,9 +2215,206 @@ def resend_otp(order_id):
 
     return redirect(url_for("delivery_dashboard"))
 
+from datetime import datetime, timedelta
 
 
 
+
+
+@app.route("/verify-payment", methods=["POST"])
+def verify_payment():
+
+    if "user_id" not in session:
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
+
+    data = request.get_json()
+
+    try:
+        params_dict = {
+            "razorpay_order_id": data["razorpay_order_id"],
+            "razorpay_payment_id": data["razorpay_payment_id"],
+            "razorpay_signature": data.get("razorpay_signature")
+        }
+
+        # 🔐 Signature verification
+        client.utility.verify_payment_signature(params_dict)
+
+        order = Order.query.get(data["order_id"])
+
+        if not order:
+            return jsonify({"success": False, "error": "Order not found"}), 404
+
+        # 🔐 Ownership check
+        if order.customer_id != session["user_id"]:
+            return jsonify({"success": False, "error": "Unauthorized"}), 403
+
+        # ❌ Already paid
+        if order.payment_status == "paid":
+            return jsonify({"success": True})
+
+        # ❌ Expired check
+        time_diff = datetime.utcnow() - order.created_at
+        if time_diff > timedelta(minutes=5):
+            order.status = "cancelled"
+            db.session.commit()
+            return jsonify({"success": False, "error": "Order expired"}), 400
+
+        # ✅ Mark as paid
+        order.payment_status = "paid"
+        order.paid_at = datetime.utcnow()
+
+        db.session.commit()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        print("Verification Failed:", e)
+        return jsonify({"success": False}), 400
+    
+@app.route("/pay/<int:order_id>")
+def pay(order_id):
+
+    if "user_id" not in session:
+        return redirect(url_for("customer_login"))
+
+    order = Order.query.get_or_404(order_id)
+
+    # 🔐 SECURITY
+    if order.customer_id != session["user_id"]:
+        return "Unauthorized", 403
+
+    # ❌ Already cancelled
+    if order.status == "cancelled":
+        return redirect(url_for("my_orders"))
+
+    # ✅ Already paid
+    if order.payment_status == "paid":
+        return redirect(url_for("my_orders"))
+
+    # ⏱ EXPIRY CHECK
+    time_diff = datetime.utcnow() - order.created_at
+
+    if time_diff > timedelta(minutes=5):
+        order.status = "cancelled"
+        db.session.commit()
+
+        return render_template(
+            "payment.html",
+            order=order,
+            expired=True,
+            message="❌ Payment time expired. Order cancelled."
+        )
+
+    return render_template("payment.html", order=order)
+
+@app.route("/create-razorpay-order/<int:order_id>")
+def create_razorpay_order(order_id):
+
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    order = Order.query.get_or_404(order_id)
+
+    # 🔐 Ownership check (IMPORTANT)
+    if order.customer_id != session["user_id"]:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    # ❌ Already cancelled
+    if order.status == "cancelled":
+        return jsonify({"error": "Order cancelled"}), 400
+
+    # ❌ Already paid
+    if order.payment_status == "paid":
+        return jsonify({"error": "Already paid"}), 400
+
+    # ⏱ EXPIRY CHECK
+    time_diff = (datetime.utcnow() - order.created_at).total_seconds()
+
+    if time_diff > 300:
+        order.status = "cancelled"
+        db.session.commit()
+
+        return jsonify({
+            "expired": True,
+            "message": "❌ Payment time expired. Order cancelled."
+        })
+
+    try:
+        razorpay_order = client.order.create({
+            "amount": int(order.total_price * 100),
+            "currency": "INR",
+            "payment_capture": 1
+        })
+
+        # 🔥 IMPORTANT FOR WEBHOOK
+        order.razorpay_order_id = razorpay_order["id"]
+        db.session.commit()
+
+        return jsonify({
+            "id": razorpay_order["id"],
+            "amount": razorpay_order["amount"]
+        })
+
+    except Exception as e:
+        print("⚠️ Razorpay Error:", e)
+        return jsonify({
+            "error": "Payment service unavailable"
+        }), 500
+    
+import json
+
+@app.route("/razorpay-webhook", methods=["POST"])
+def razorpay_webhook():
+
+    webhook_secret = "PASTE_YOUR_SECRET_HERE"
+
+    payload = request.data
+    signature = request.headers.get("X-Razorpay-Signature")
+
+    try:
+        # 🔐 Verify webhook signature
+        client.utility.verify_webhook_signature(
+            payload,
+            signature,
+            webhook_secret
+        )
+
+        data = json.loads(payload)
+
+        # 🎯 Only handle successful payments
+        if data["event"] == "payment.captured":
+
+            payment = data["payload"]["payment"]["entity"]
+            razorpay_order_id = payment["order_id"]
+
+            order = Order.query.filter_by(
+                razorpay_order_id=razorpay_order_id
+            ).first()
+
+            if order:
+                # ❌ already paid
+                if order.payment_status == "paid":
+                    return jsonify({"status": "already processed"})
+
+                # ⏱ expiry check (optional safety)
+                time_diff = datetime.utcnow() - order.created_at
+                if time_diff > timedelta(minutes=5):
+                    order.status = "cancelled"
+                    db.session.commit()
+                    return jsonify({"status": "expired"})
+
+                # ✅ mark paid
+                order.payment_status = "paid"
+                order.paid_at = datetime.utcnow()
+
+                db.session.commit()
+
+        return jsonify({"status": "ok"})
+
+    except Exception as e:
+        print("Webhook Error:", e)
+        return jsonify({"status": "error"}), 400
+    
 # -------------------- RUN --------------------
 if __name__ == "__main__":
     with app.app_context():
@@ -2136,7 +2427,7 @@ if __name__ == "__main__":
 
         if admin_user:
             admin_user.password = bcrypt.generate_password_hash(admin_password).decode("utf-8")
-            admin_user.role = "admin"  # 🔥 force role just in case
+            admin_user.role = "admin"  
             print("🔁 Admin password updated!")
         else:
             admin_user = User(
