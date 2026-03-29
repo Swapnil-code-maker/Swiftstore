@@ -32,7 +32,7 @@
 
 > Users choose their role to access the appropriate dashboard.
 
-![Landing Page](screenshots/landing.png)
+![Landing Page](Screenshots/landing.png)
 
 ---
 
@@ -42,21 +42,21 @@
 
 > Customers can browse all available products from multiple vendors, filter by store, search by name or category, and sort by price or distance.
 
-![Customer Browse](screenshots/customer_browse.png)
+![Customer Browse](Screenshots/customer_browse.png)
 
 **Search by Category (e.g. "North Indian")**
 
-![Category Search](screenshots/category_search.png)
+![Category Search](Screenshots/category_search.png)
 
 **Search by Item Name (e.g. "Idli")**
 
-![Item Search](screenshots/item_search.png)
+![Item Search](Screenshots/item_search.png)
 
 **Cart & Checkout**
 
 > Add items from multiple vendors to a single cart. Choose between Cash on Delivery or Pay Online (UPI). The cart shows a live breakdown of items, delivery fee, and platform fee.
 
-![Cart Checkout](screenshots/cart_checkout.png)
+![Cart Checkout](Screenshots/cart_checkout.png)
 
 ---
 
@@ -64,7 +64,7 @@
 
 > Customers can view all nearby vendors with their distance and interactive OpenStreetMap previews.
 
-![Nearby Vendors](screenshots/nearby_vendors.png)
+![Nearby Vendors](Screenshots/nearby_vendors.png)
 
 ---
 
@@ -82,23 +82,23 @@ SwiftStore sends automated emails at every stage of the order lifecycle:
 
 **Order Placed Successfully**
 
-![Email - Order Placed](screenshots/email_order_placed.png)
+![Email - Order Placed](Screenshots/email_order_placed.png)
 
 **Order Being Prepared (All Vendors Approved)**
 
-![Email - Order Prepared](screenshots/email_order_prepared.png)
+![Email - Order Prepared](Screenshots/email_order_prepared.png)
 
 **Delivery OTP**
 
-![Email - OTP](screenshots/email_otp.png)
+![Email - OTP](Screenshots/email_otp.png)
 
 **Order Delivered**
 
-![Email - Delivered](screenshots/email_delivered.png)
+![Email - Delivered](Screenshots/email_delivered.png)
 
 **Complaint Response from Admin**
 
-![Email - Complaint](screenshots/email_complaint.png)
+![Email - Complaint](Screenshots/email_complaint.png)
 
 ---
 
@@ -108,19 +108,19 @@ SwiftStore sends automated emails at every stage of the order lifecycle:
 
 > Vendors can set their shop location via GPS, track performance metrics (top-selling product, success rate, rejection rate), and manage their product inventory.
 
-![Vendor Dashboard](screenshots/vendor_dashboard.png)
+![Vendor Dashboard](Screenshots/vendor_dashboard.png)
 
 **Product Management**
 
 > Vendors can add, update stock, and remove products. Each product shows category, current stock, and update controls.
 
-![Vendor Products](screenshots/vendor_products.png)
+![Vendor Products](Screenshots/vendor_products.png)
 
 **Earnings Summary**
 
 > Shows gross revenue, platform commission (5%), and net earnings, along with incoming orders.
 
-![Vendor Earnings](screenshots/vendor_earnings.png)
+![Vendor Earnings](Screenshots/vendor_earnings.png)
 
 ---
 
@@ -130,25 +130,25 @@ SwiftStore sends automated emails at every stage of the order lifecycle:
 
 > The admin has a bird's-eye view of total users, orders, and revenue with a daily revenue analytics chart.
 
-![Admin Dashboard](screenshots/admin_dashboard.png)
+![Admin Dashboard](Screenshots/admin_dashboard.png)
 
 **Vendor Management**
 
 > Admin can view all registered vendors, their pending settlement amounts, and trigger payment settlements.
 
-![Admin Vendors](screenshots/admin_vendors.png)
+![Admin Vendors](Screenshots/admin_vendors.png)
 
 **Delivery Partner Verification**
 
 > Admin reviews delivery partner registrations and can preview their submitted National ID / Driving Licence before approving them.
 
-![Admin Delivery Verification](screenshots/admin_delivery_verify.png)
+![Admin Delivery Verification](Screenshots/admin_delivery_verify.png)
 
 **Complaints Management**
 
 > Admin can view all customer complaints, respond to them, and the response is automatically emailed to the customer.
 
-![Admin Complaints](screenshots/admin_complaints.png)
+![Admin Complaints](Screenshots/admin_complaints.png)
 
 ---
 
