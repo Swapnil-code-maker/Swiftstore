@@ -1,5 +1,11 @@
 let cart = JSON.parse(localStorage.getItem("swiftCart")) || [];
 
+// 🔥 STRONG CLEANUP FIX (improved)
+if (!Array.isArray(cart) || cart.length === 0) {
+    localStorage.removeItem("swiftCart");
+    cart = [];
+}
+
 
 /* ---------------- ADD TO CART ---------------- */
 
@@ -28,6 +34,12 @@ function addToCartWithQty(id, name, price, vendorId) {
 /* ---------------- UPDATE CART UI ---------------- */
 
 function updateCartUI() {
+
+    // 🔥 ensure valid cart before saving
+    if (!Array.isArray(cart)) {
+        localStorage.removeItem("swiftCart");
+        cart = [];
+    }
 
     if (cart.length > 0) {
         localStorage.setItem("swiftCart", JSON.stringify(cart));
@@ -78,6 +90,7 @@ function updateCartUI() {
         </div>
     `).join("");
 
+    // 🔥 SAME LOGIC (UNCHANGED — as you wanted)
     let deliveryFee = subtotal > 499 ? 0 : 25;
     let platformFee = subtotal * 0.02;
     let total = subtotal + deliveryFee + platformFee;
@@ -111,7 +124,6 @@ function updateCartUI() {
                 <span>₹${total.toFixed(2)}</span>
             </div>
 
-            <!-- 🔥 NEW CLEAN PAYMENT SELECT -->
             <div style="margin-top:12px;">
                 <select id="payment_method" style="
                     width:100%;
@@ -127,7 +139,6 @@ function updateCartUI() {
                 </select>
             </div>
 
-            <!-- 🔥 SINGLE BUY BUTTON -->
             <button class="checkout-btn" onclick="placeOrder()" 
                 style="margin-top:12px;">
                 Buy Now
@@ -183,7 +194,7 @@ function placeOrder() {
                 product_id: item.id,
                 quantity: item.quantity
             })),
-            payment_method: method   // ✅ auto selected
+            payment_method: method
         })
     })
     .then(res => res.json())
@@ -191,13 +202,13 @@ function placeOrder() {
 
         if (data.success) {
 
-            // 💳 ---------------- RAZORPAY ONLINE PAYMENT ----------------
+            // 💳 ONLINE FLOW
             if (method === "ONLINE" && data.redirect) {
-    window.location.href = data.redirect;
-    return;
-}
+                window.location.href = data.redirect;
+                return;
+            }
 
-            // 💵 ---------------- COD FLOW (UNCHANGED) ----------------
+            // 💵 COD FLOW
             cart = [];
             localStorage.removeItem("swiftCart");
             updateCartUI();
@@ -224,5 +235,12 @@ function changeQuantity(productId, delta) {
 /* ---------------- INIT ---------------- */
 
 document.addEventListener("DOMContentLoaded", function() {
+
+    // 🔥 extra safety cleanup
+    if (!Array.isArray(cart)) {
+        localStorage.removeItem("swiftCart");
+        cart = [];
+    }
+
     updateCartUI();
 });

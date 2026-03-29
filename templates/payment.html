@@ -178,13 +178,19 @@ function payNow() {
         console.log("Razorpay Order Data:", data);
 
         const options = {
-            key: "rzp_test_1234567890",  // replace later with real key
+            key: "rzp_test_SVjoL6FeO7n5pa",  
             amount: data.amount,
             currency: "INR",
             name: "SwiftStore",
             description: "Order Payment",
             order_id: data.id,
-
+            method: {
+             upi: true,
+             card: true,
+             netbanking: true,
+             wallet: true
+    },
+            
             handler: function (response) {
 
                 fetch("/verify-payment", {

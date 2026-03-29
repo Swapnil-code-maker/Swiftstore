@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 import razorpay
-client = razorpay.Client(auth=("YOUR_KEY_ID", "YOUR_SECRET"))
+client = razorpay.Client(auth=("rzp_test_SVjoL6FeO7n5pa", "J85qrmoMEJIPeCWeLUdgOJxc"))
 import math
 import requests
 import os
@@ -1607,7 +1607,7 @@ def create_order():
         customer_id=customer.id,
         customer_lat=customer.latitude,
         customer_lon=customer.longitude,
-        status="placed",
+        status="pending" if payment_method == "ONLINE" else "placed",  # 🔥 FIX
         total_price=0,
         payment_method=payment_method,
         payment_status="pending"
@@ -1627,9 +1627,11 @@ def create_order():
             db.session.rollback()
             return jsonify({"error": "Insufficient stock"}), 400
 
-        product.stock -= quantity
-        total_price += product.price * quantity
+        # 🔥 Only reduce stock for COD (not for online yet)
+        if payment_method != "ONLINE":
+            product.stock -= quantity
 
+        total_price += product.price * quantity
         involved_vendors.add(product.vendor_id)
 
         commission_rate = 0.035
@@ -1645,63 +1647,71 @@ def create_order():
 
         db.session.add(order_item)
 
+    # 🔥 ADD FEES OUTSIDE LOOP (FIXED + MATCH JS LOGIC)
+    delivery_fee = 0 if total_price > 499 else 25
+    platform_fee = total_price * 0.02
+
+    total_price += delivery_fee + platform_fee
+
     new_order.total_price = total_price
     db.session.commit()
 
-    # 🔔 Notify each vendor separately
-    for vendor_id in involved_vendors:
-        vendor = User.query.get(vendor_id)
+    # 🔔 Notify + email ONLY for COD (payment already confirmed)
+    if payment_method != "ONLINE":
 
-        html = build_email_template(
-            "New Order Received 🛒",
+        # 🔔 Notify each vendor separately
+        for vendor_id in involved_vendors:
+            vendor = User.query.get(vendor_id)
+
+            html = build_email_template(
+                "New Order Received 🛒",
+                f"""
+                Hello {vendor.company_name},<br><br>
+                You have items in Order <strong>#{new_order.id}</strong>.<br><br>
+                Please login to prepare your items.
+                """
+            )
+
+            send_email(vendor.email, "New Order - SwiftStore", html)
+
+        # 📧 Send confirmation email to customer
+        customer_html = build_email_template(
+            "Order Placed Successfully 🛒",
             f"""
-            Hello {vendor.company_name},<br><br>
-            You have items in Order <strong>#{new_order.id}</strong>.<br><br>
-            Please login to prepare your items.
+            Hi {customer.full_name or "Customer"},<br><br>
+            Your order <strong>#{new_order.id}</strong> has been placed successfully.<br><br>
+            Vendors are reviewing your items and will approve shortly.<br><br>
+            Thank you for choosing SwiftStore ❤️
             """
         )
 
-        send_email(vendor.email, "New Order - SwiftStore", html)
+        send_email(
+            customer.email,
+            "Order Placed - SwiftStore",
+            customer_html
+        )
 
-    # 📧 Send confirmation email to customer
-    customer_html = build_email_template(
-        "Order Placed Successfully 🛒",
-        f"""
-        Hi {customer.full_name or "Customer"},<br><br>
-        Your order <strong>#{new_order.id}</strong> has been placed successfully.<br><br>
-        Vendors are reviewing your items and will approve shortly.<br><br>
-        Thank you for choosing SwiftStore ❤️
-        """
-    )
+        # 🔔 Create notification for customer
+        notification = Notification(
+            user_id=customer.id,
+            message=f"Your order #{new_order.id} has been placed successfully!"
+        )
 
-    send_email(
-        customer.email,
-        "Order Placed - SwiftStore",
-        customer_html
-    )
-
-    # 🔔 Create notification for customer
-    notification = Notification(
-        user_id=customer.id,
-        message=f"Your order #{new_order.id} has been placed successfully!"
-    )
-
-    db.session.add(notification)
-    db.session.commit()
+        db.session.add(notification)
+        db.session.commit()
 
     # 💳 ---------------- RAZORPAY PAYMENT ----------------
     if payment_method == "ONLINE":
         return jsonify({
-        "success": True,
-        "redirect": f"/pay/{new_order.id}"
-    })
+            "success": True,
+            "redirect": f"/pay/{new_order.id}"
+        })
 
     # 💵 ---------------- COD FLOW ----------------
     return jsonify({
         "success": True,
         "order_id": new_order.id
     })
-
 
 
 
