@@ -1,78 +1,298 @@
-SwiftStore
+# 🛍️ SwiftStore
+ 
+**Full-Stack Multi-Vendor Marketplace & Delivery Management Platform**
+ 
+**Stack:** 
+-`Python`
+-`Flask`
+-`SQLAlchemy`
+-`SQLite` 
+-`HTML5`
+-`CSS3`
+-`JavaScript`
+-`Bcrypt`
+-`Flask-Mail`
 
-Multi-Vendor E-Commerce and Delivery Management Platform
+ 
+*A complete marketplace connecting Customers, Vendors, and Delivery Agents in one unified platform*
+ 
+---
+ 
+## 📽️ Demo Video
+ 
+> Click below to watch the full demo of SwiftStore in action:
+ 
+▶ [Watch Full Demo on Google Drive](https://drive.google.com/file/d/1YmHnPctyQWPD48DGeTNIy9DNclPL9i1d/view?usp=sharing)
+ 
+---
 
-SwiftStore is a full-stack web application that simulates a real-world multi-vendor marketplace. The platform connects customers, vendors, and delivery agents within a single system, enabling product management, order processing, and delivery coordination.
+## 📸 Screenshots
 
-The project is built using Flask for backend development and SQLite with SQLAlchemy for database management. It implements role-based authentication, secure session handling, and structured order lifecycle management.
+### 🏠 Landing Page — Portal Selection
 
-Features
-Customer
+> Users choose their role to access the appropriate dashboard.
 
-Register and login
+![Landing Page](screenshots/landing.png)
 
-Browse available products
+---
 
-Add items to cart
+### 🛒 Customer Dashboard
 
-Place orders
+**Browse & Search Products**
 
-Track order status
+> Customers can browse all available products from multiple vendors, filter by store, search by name or category, and sort by price or distance.
 
-Vendor
+![Customer Browse](screenshots/customer_browse.png)
 
-Add, update, and delete products
+**Search by Category (e.g. "North Indian")**
 
-Accept or reject customer orders
+![Category Search](screenshots/category_search.png)
 
-Manage inventory
+**Search by Item Name (e.g. "Idli")**
 
-View revenue data
+![Item Search](screenshots/item_search.png)
 
-Delivery Agent
+**Cart & Checkout**
 
-View assigned delivery tasks
+> Add items from multiple vendors to a single cart. Choose between Cash on Delivery or Pay Online (UPI). The cart shows a live breakdown of items, delivery fee, and platform fee.
 
-Accept delivery requests
+![Cart Checkout](screenshots/cart_checkout.png)
 
-Update delivery status
+---
 
-Mark orders as delivered
+### 📍 Nearby Vendors Map
 
-Tech Stack
+> Customers can view all nearby vendors with their distance and interactive OpenStreetMap previews.
 
-Backend
+![Nearby Vendors](screenshots/nearby_vendors.png)
 
-Python
+---
 
-Flask
+### 📧 Email Notifications
 
-SQLAlchemy
+SwiftStore sends automated emails at every stage of the order lifecycle:
 
-SQLite
+| Stage | Email |
+|-------|-------|
+| Order Placed | Vendors are reviewing your order |
+| All Vendors Approved | Delivery partner assigned |
+| Delivery OTP | Share OTP with delivery agent |
+| Order Delivered | Thank you confirmation |
+| Complaint Response | Admin reply to your complaint |
 
-Frontend
+**Order Placed Successfully**
 
-HTML
+![Email - Order Placed](screenshots/email_order_placed.png)
 
-CSS
+**Order Being Prepared (All Vendors Approved)**
 
-JavaScript
+![Email - Order Prepared](screenshots/email_order_prepared.png)
 
-Security
+**Delivery OTP**
 
-Session-based authentication
+![Email - OTP](screenshots/email_otp.png)
 
-Password hashing using Bcrypt
+**Order Delivered**
 
-System Workflow
+![Email - Delivered](screenshots/email_delivered.png)
 
-Customer places an order.
+**Complaint Response from Admin**
 
-Vendor reviews and accepts the order.
+![Email - Complaint](screenshots/email_complaint.png)
 
-Delivery agent is assigned.
+---
 
-Delivery status updates dynamically in the system.
+### 🏪 Vendor Dashboard
 
-This ensures a structured and realistic order management flow.
+**Performance Insights & Shop Location**
+
+> Vendors can set their shop location via GPS, track performance metrics (top-selling product, success rate, rejection rate), and manage their product inventory.
+
+![Vendor Dashboard](screenshots/vendor_dashboard.png)
+
+**Product Management**
+
+> Vendors can add, update stock, and remove products. Each product shows category, current stock, and update controls.
+
+![Vendor Products](screenshots/vendor_products.png)
+
+**Earnings Summary**
+
+> Shows gross revenue, platform commission (5%), and net earnings, along with incoming orders.
+
+![Vendor Earnings](screenshots/vendor_earnings.png)
+
+---
+
+### 🛡️ Admin Dashboard
+
+**Overview**
+
+> The admin has a bird's-eye view of total users, orders, and revenue with a daily revenue analytics chart.
+
+![Admin Dashboard](screenshots/admin_dashboard.png)
+
+**Vendor Management**
+
+> Admin can view all registered vendors, their pending settlement amounts, and trigger payment settlements.
+
+![Admin Vendors](screenshots/admin_vendors.png)
+
+**Delivery Partner Verification**
+
+> Admin reviews delivery partner registrations and can preview their submitted National ID / Driving Licence before approving them.
+
+![Admin Delivery Verification](screenshots/admin_delivery_verify.png)
+
+**Complaints Management**
+
+> Admin can view all customer complaints, respond to them, and the response is automatically emailed to the customer.
+
+![Admin Complaints](screenshots/admin_complaints.png)
+
+---
+
+## ✨ Features
+
+### 👤 Customer
+- Register, login, and manage account
+- Browse products from all vendors with search, filter, and sort
+- View nearby vendors with distance and map preview
+- Add items from multiple vendors into a single cart
+- Place orders (Cash on Delivery / Pay Online via UPI)
+- Track order status in real-time
+- Raise complaints against orders
+
+### 🏪 Vendor
+- Register with company details and set shop location (GPS)
+- Add, update stock, and remove products with images and categories
+- Accept or reject incoming customer orders
+- View earnings: gross revenue, 5% platform commission, net earnings
+- Track performance: top product, success rate, rejection rate
+
+### 🚚 Delivery Agent
+- Register and upload National ID for admin verification
+- View and accept available delivery requests
+- Update delivery status dynamically
+- Confirm delivery using customer OTP
+
+### 🛡️ Admin
+- Platform-wide dashboard: total users, orders, revenue
+- Revenue analytics chart with daily revenue history
+- Manage and approve/reject delivery partner registrations
+- Preview uploaded National IDs / Driving Licences
+- Manage vendor list and settle pending payments
+- View and respond to customer complaints (response is emailed automatically)
+
+---
+
+## 🔒 Security
+
+- **Session-based Authentication** — Secure login sessions per user role
+- **Bcrypt Password Hashing** — All passwords are hashed before storage
+- **Role-Based Access Control** — Each portal (Customer / Vendor / Delivery / Admin) is strictly isolated
+- **OTP Delivery Verification** — A unique OTP is sent to the customer's email and must be provided to the delivery agent to confirm delivery
+
+---
+
+## 🏗️ System Workflow
+
+```
+Customer places order
+        ↓
+Vendors review & approve/reject items
+        ↓
+All vendors approve → Delivery partner assigned
+        ↓
+Customer receives Delivery OTP via email
+        ↓
+Delivery agent picks up & delivers order
+        ↓
+Customer shares OTP → Delivery confirmed
+        ↓
+Customer receives delivery confirmation email
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python, Flask, SQLAlchemy |
+| Database | SQLite |
+| Frontend | HTML5, CSS3, JavaScript |
+| Maps | Leaflet.js + OpenStreetMap |
+| Email | Flask-Mail (SMTP) |
+| Auth | Flask Sessions + Bcrypt |
+| Payments | UPI / Cash on Delivery |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.x
+- pip
+
+### Installation
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Swapnil-code-maker/Swiftstore.git
+cd Swiftstore
+
+# 2. Install dependencies
+pip install flask flask-sqlalchemy flask-bcrypt flask-mail
+
+# 3. Run the application
+python app.py
+```
+
+### Access the App
+
+Open your browser and navigate to:
+```
+http://127.0.0.1:5000
+```
+
+Select your portal — **Customer**, **Vendor**, **Delivery Agent**, or **Admin**.
+
+---
+
+## 📁 Project Structure
+
+```
+Swiftstore/
+├── app.py                  # Main Flask application & all routes
+├── services/               # Business logic & helper services
+├── static/                 # CSS, JS, images, logo
+├── templates/              # Jinja2 HTML templates
+│   ├── customer/
+│   ├── vendor/
+│   ├── delivery/
+│   └── admin/
+├── screenshots/            # UI screenshots used in README
+│   ├── landing.png
+│   ├── customer_browse.png
+│   ├── cart_checkout.png
+│   ├── nearby_vendors.png
+│   ├── vendor_dashboard.png
+│   ├── admin_dashboard.png
+│   └── ...
+├── project_report.pdf      # Detailed project report
+├── .gitignore
+└── README.md
+
+---
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+---
+
+Built with ❤️ using Flask & Python
+
+[▶ Watch Demo](https://drive.google.com/file/d/1YmHnPctyQWPD48DGeTNIy9DNclPL9i1d/view?usp=sharing) · [Report Bug](https://github.com/Swapnil-code-maker/Swiftstore/issues) · [Request Feature](https://github.com/Swapnil-code-maker/Swiftstore/issues)
