@@ -173,7 +173,7 @@
                         {% endfor %}
                     </div>
 
-                    {% if order.status == "placed" and item_status == "pending" %}
+                    {% if order.status in ["placed", "pending"] and item_status == "pending" %}
                         <div class="order-actions">
                             <form action="{{ url_for('approve_order', order_id=order.id) }}" method="POST">
                                 <button type="submit" class="approve-btn">
