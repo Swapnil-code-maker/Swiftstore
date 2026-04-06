@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 import razorpay
-client = razorpay.Client(auth=("rzp_test_SVjoL6FeO7n5pa", "J85qrmoMEJIPeCWeLUdgOJxc"))
+client = razorpay.Client(auth=("secret", "secret"))
 import math
 import requests
 import os
@@ -496,7 +496,7 @@ def submit_complaint():
 
     order = Order.query.get_or_404(order_id)
 
-    # 🔒 Security check
+    # Security check
     if order.customer_id != session["user_id"]:
         return "Unauthorized", 403
 
@@ -535,7 +535,7 @@ def admin_login():
         email = request.form["email"]
         password = request.form["password"]
 
-        # 🔒 Whitelisted admin emails
+        #  Whitelisted admin emails
         ALLOWED_ADMINS = ["swiftstore.noreply.official@gmail.com", "admin@swift.com"]
 
 
@@ -568,7 +568,7 @@ def customer_dashboard():
 
     customer = User.query.get(session["user_id"])
 
-    # 🔎 GET FILTER PARAMS
+    #  GET FILTER PARAMS
     selected_vendor_id = request.args.get("vendor_id", type=int)
     search_query = request.args.get("search", type=str)
     category_filter = request.args.get("category", type=str)
@@ -667,7 +667,7 @@ def customer_dashboard():
             key=lambda x: x["distance"] if x["distance"] is not None else 9999
         )
 
-    # 🔔 Fetch unread notifications
+    #  Fetch unread notifications
     notifications = Notification.query.filter_by(
         user_id=session["user_id"],
         is_read=False
@@ -716,7 +716,7 @@ def delivery_dashboard():
         delivery_id=delivery.id,
         status="delivered"
     ).all()
-    # ⭐ Calculate rating stats
+    #  Calculate rating stats
     ratings = Rating.query.filter_by(delivery_id=delivery.id).all()
 
     total_ratings = len(ratings)
@@ -951,7 +951,7 @@ def cancel_order(order_id):
 
     db.session.commit()
 
-    # 🔔 Notify each vendor
+    #  Notify each vendor
     for vendor_id in involved_vendors:
         vendor = User.query.get(vendor_id)
 
@@ -962,7 +962,7 @@ def cancel_order(order_id):
         )
         db.session.add(notification)
 
-        # 📧 Email notification
+        # Email notification
         html = build_email_template(
             "Order Cancelled ❌",
             f"""
@@ -1053,15 +1053,15 @@ def verify_delivery(order_id):
 
     order = Order.query.get_or_404(order_id)
 
-    # 🔒 Security: Only assigned delivery agent
+    #  Security: Only assigned delivery agent
     if order.delivery_id != session["user_id"]:
         return "Unauthorized", 403
 
-    # 🔒 Only allow if order is out_for_delivery
+    #  Only allow if order is out_for_delivery
     if order.status != "out_for_delivery":
         return "Invalid status", 400
 
-    # 🚫 BLOCK DELIVERY IF ONLINE PAYMENT NOT DONE
+    #  BLOCK DELIVERY IF ONLINE PAYMENT NOT DONE
     if order.payment_method == "ONLINE" and order.payment_status != "paid":
         flash("Payment not completed ❌")
         return redirect(url_for("delivery_dashboard"))
@@ -1086,10 +1086,10 @@ def verify_delivery(order_id):
         flash("OTP expired!", "error")
         return redirect(url_for("delivery_dashboard"))
 
-    # ✅ MARK ORDER DELIVERED
+    #  MARK ORDER DELIVERED
     order.status = "delivered"
 
-    # 💰 ONLY MARK PAID HERE FOR COD
+    #  ONLY MARK PAID HERE FOR COD
     if order.payment_method == "COD":
         order.payment_status = "paid"
         order.paid_at = datetime.utcnow()
@@ -1112,7 +1112,7 @@ def verify_delivery(order_id):
 
         db.session.add(ledger_entry)
 
-    # 🔐 Clear OTP
+    #  Clear OTP
     order.delivery_otp = None
     order.otp_created_at = None
 
@@ -1130,7 +1130,7 @@ def verify_delivery(order_id):
     else:
         daily.total_amount += order.total_price
 
-    # 🔔 Create dashboard notification
+    #  Create dashboard notification
     notification = Notification(
         user_id=order.customer_id,
         message=f"Your order #{order.id} has been delivered successfully!"
@@ -1138,10 +1138,10 @@ def verify_delivery(order_id):
 
     db.session.add(notification)
 
-    # 💾 Single commit at end (clean & atomic)
+    #  Single commit at end (clean & atomic)
     db.session.commit()
 
-    # 📧 Send confirmation email
+    # Send confirmation email
     customer = User.query.get(order.customer_id)
 
     html = build_email_template(
@@ -1254,15 +1254,15 @@ def order_location_data(order_id):
     order = Order.query.get_or_404(order_id)
     user = User.query.get(session["user_id"])
 
-    # 🔒 Customer restriction
+    #  Customer restriction
     if user.role == "customer" and order.customer_id != user.id:
         return jsonify({"error": "Forbidden"}), 403
 
-    # 🔒 Delivery restriction
+    #  Delivery restriction
     if user.role == "delivery" and order.delivery_id != user.id:
         return jsonify({"error": "Forbidden"}), 403
 
-    # 🔥 MULTI-VENDOR LOGIC
+    #  MULTI-VENDOR LOGIC
     order_items = OrderItem.query.filter_by(order_id=order.id).all()
 
     vendor_ids = set(item.vendor_id for item in order_items)
@@ -1376,7 +1376,7 @@ def vendor_dashboard():
 
     # ================= NEW: PERFORMANCE METRICS =================
 
-    # 🔥 Top Selling Product
+    #  Top Selling Product
     top_product = db.session.query(
         Product.name,
         func.sum(OrderItem.quantity).label("total_sold")
@@ -1386,25 +1386,25 @@ def vendor_dashboard():
      .order_by(func.sum(OrderItem.quantity).desc())\
      .first()
 
-    # 🔥 Total Items (for rate calculations)
+    #  Total Items (for rate calculations)
     total_items = db.session.query(OrderItem).filter_by(
         vendor_id=vendor.id
     ).count()
 
-    # 🔥 Successful (Delivered)
+    #  Successful (Delivered)
     successful_items = db.session.query(OrderItem).join(Order)\
     .filter(
         OrderItem.vendor_id == vendor.id,
         Order.status == "delivered"
     ).count()
 
-    # 🔥 Rejected
+    #  Rejected
     rejected_items = db.session.query(OrderItem).filter_by(
         vendor_id=vendor.id,
         status="rejected"
     ).count()
 
-    # 🔥 Rates
+    #  Rates
     success_rate = round((successful_items / total_items) * 100, 2) if total_items else 0
     rejection_rate = round((rejected_items / total_items) * 100, 2) if total_items else 0
 
@@ -1494,7 +1494,7 @@ def vendor_dashboard():
         weekly_earnings=round(weekly_earnings, 2),
         commission_rate=5,
 
-        # 🔥 NEW FEATURES
+        #  NEW FEATURES
         top_product=top_product,
         success_rate=success_rate,
         rejection_rate=rejection_rate
@@ -1627,7 +1627,7 @@ def create_order():
             db.session.rollback()
             return jsonify({"error": "Insufficient stock"}), 400
 
-        # 🔥 Only reduce stock for COD (not for online yet)
+        #  Only reduce stock for COD (not for online yet)
         if payment_method != "ONLINE":
             product.stock -= quantity
 
@@ -1647,7 +1647,7 @@ def create_order():
 
         db.session.add(order_item)
 
-    # 🔥 ADD FEES OUTSIDE LOOP (FIXED + MATCH JS LOGIC)
+    #  ADD FEES OUTSIDE LOOP (FIXED + MATCH JS LOGIC)
     delivery_fee = 0 if total_price > 499 else 25
     platform_fee = total_price * 0.02
 
@@ -1656,10 +1656,10 @@ def create_order():
     new_order.total_price = total_price
     db.session.commit()
 
-    # 🔔 Notify + email ONLY for COD (payment already confirmed)
+    #  Notify + email ONLY for COD (payment already confirmed)
     if payment_method != "ONLINE":
 
-        # 🔔 Notify each vendor separately
+        #  Notify each vendor separately
         for vendor_id in involved_vendors:
             vendor = User.query.get(vendor_id)
 
@@ -1674,7 +1674,7 @@ def create_order():
 
             send_email(vendor.email, "New Order - SwiftStore", html)
 
-        # 📧 Send confirmation email to customer
+        # Send confirmation email to customer
         customer_html = build_email_template(
             "Order Placed Successfully 🛒",
             f"""
@@ -1691,7 +1691,7 @@ def create_order():
             customer_html
         )
 
-        # 🔔 Create notification for customer
+        # Create notification for customer
         notification = Notification(
             user_id=customer.id,
             message=f"Your order #{new_order.id} has been placed successfully!"
@@ -1725,11 +1725,11 @@ def approve_order(order_id):
     vendor_id = session["user_id"]
     order = Order.query.get_or_404(order_id)
 
-    # 🚫 Block if cancelled or delivered
+    #  Block if cancelled or delivered
     if order.status in ["cancelled", "delivered"]:
         return "Order already completed", 400
 
-    # 🔐 Get this vendor's items
+    #  Get this vendor's items
     vendor_items = OrderItem.query.filter_by(
         order_id=order.id,
         vendor_id=vendor_id
@@ -1738,14 +1738,14 @@ def approve_order(order_id):
     if not vendor_items:
         return "Unauthorized", 403
 
-    # ✅ Mark this vendor’s items as approved
+    #  Mark this vendor’s items as approved
     for item in vendor_items:
         if item.status == "pending":
             item.status = "approved"
 
     db.session.commit()
 
-    # 🔎 Check global order item states
+    # Check global order item states
     pending_exists = OrderItem.query.filter_by(
         order_id=order.id,
         status="pending"
@@ -1756,13 +1756,13 @@ def approve_order(order_id):
         status="rejected"
     ).first()
 
-    # ❌ If any rejected → cancel whole order
+    #  If any rejected → cancel whole order
     if rejected_exists:
         order.status = "cancelled"
         db.session.commit()
         return redirect(url_for("vendor_dashboard"))
 
-    # 🚚 If no pending items → assign delivery
+    # If no pending items → assign delivery
     if not pending_exists and not order.delivery_id:
 
         assigned = assign_delivery_agent(order)
@@ -1772,7 +1772,7 @@ def approve_order(order_id):
             flash("No delivery agents available right now.", "warning")
             return redirect(url_for("vendor_dashboard"))
 
-        # 📧 Notify customer
+        #  Notify customer
         customer = User.query.get(order.customer_id)
 
         html = build_email_template(
@@ -1805,11 +1805,11 @@ def reject_order(order_id):
     vendor_id = session["user_id"]
     order = Order.query.get_or_404(order_id)
 
-    # 🚫 Block if already delivered or cancelled
+    #  Block if already delivered or cancelled
     if order.status in ["cancelled", "delivered"]:
         return "Order already completed", 400
 
-    # 🔐 Get this vendor's items
+    # Get this vendor's items
     vendor_items = OrderItem.query.filter_by(
         order_id=order.id,
         vendor_id=vendor_id
@@ -1818,12 +1818,12 @@ def reject_order(order_id):
     if not vendor_items:
         return "Unauthorized", 403
 
-    # 🚫 Prevent double rejection
+    #  Prevent double rejection
     already_rejected = all(item.status == "rejected" for item in vendor_items)
     if already_rejected:
         return redirect(url_for("vendor_dashboard"))
 
-    # 🔄 Restore stock + mark only this vendor items rejected
+    # Restore stock + mark only this vendor items rejected
     for item in vendor_items:
         if item.status != "rejected":
             product = Product.query.get(item.product_id)
@@ -1833,13 +1833,13 @@ def reject_order(order_id):
 
     db.session.commit()
 
-    # 🔎 Check remaining active items
+    #  Check remaining active items
     remaining_active = OrderItem.query.filter(
         OrderItem.order_id == order.id,
         OrderItem.status.in_(["pending", "approved"])
     ).first()
 
-    # ❌ If NO items left → cancel full order
+    # If NO items left → cancel full order
     if not remaining_active:
         order.status = "cancelled"
         db.session.commit()
@@ -1858,7 +1858,7 @@ def reject_order(order_id):
         send_email(customer.email, "Order Cancelled - SwiftStore", html)
 
     else:
-        # 🔔 Partial rejection email
+        #  Partial rejection email
         customer = User.query.get(order.customer_id)
 
         html = build_email_template(
@@ -1932,11 +1932,11 @@ def logout():
 @app.route("/register/<role>", methods=["GET", "POST"])
 def register(role):
 
-    # 🚫 BLOCK ADMIN REGISTRATION COMPLETELY
+    # BLOCK ADMIN REGISTRATION COMPLETELY
     if role == "admin":
         return "Access Denied", 403
 
-    # 🔥 DELIVERY REGISTRATION
+    # DELIVERY REGISTRATION
     if role == "delivery":
 
         if request.method == "POST":
@@ -1980,7 +1980,7 @@ def register(role):
 
         return render_template("delivery_register.html")
 
-    # 🔥 CUSTOMER & VENDOR REGISTRATION
+    #  CUSTOMER & VENDOR REGISTRATION
     if request.method == "POST":
 
         email = request.form["email"]
@@ -2050,7 +2050,7 @@ def track_order(order_id):
 
     delivery = User.query.get(order.delivery_id) if order.delivery_id else None
 
-    # ✅ NEW: Get all vendors involved in this order
+    #  NEW: Get all vendors involved in this order
     vendor_ids = {item.vendor_id for item in order.items}
     vendors = User.query.filter(User.id.in_(vendor_ids)).all()
 
@@ -2079,7 +2079,7 @@ def reply_complaint(id):
             flash("Reply message too short.")
             return redirect(url_for("reply_complaint", id=id))
 
-        # 📧 Send email to customer
+        # Send email to customer
         html = build_email_template(
             "Regarding Your Complaint - SwiftStore",
             f"""
@@ -2193,7 +2193,7 @@ def resend_otp(order_id):
     if order.status != "out_for_delivery":
         return "Invalid status", 400
 
-    # 🔐 Generate new OTP
+    #  Generate new OTP
     new_otp = generate_otp()
 
     from datetime import datetime
@@ -2246,7 +2246,7 @@ def verify_payment():
             "razorpay_signature": data.get("razorpay_signature")
         }
 
-        # 🔐 Signature verification
+        # Signature verification
         client.utility.verify_payment_signature(params_dict)
 
         order = Order.query.get(data["order_id"])
@@ -2254,22 +2254,22 @@ def verify_payment():
         if not order:
             return jsonify({"success": False, "error": "Order not found"}), 404
 
-        # 🔐 Ownership check
+        # Ownership check
         if order.customer_id != session["user_id"]:
             return jsonify({"success": False, "error": "Unauthorized"}), 403
 
-        # ❌ Already paid
+        # Already paid
         if order.payment_status == "paid":
             return jsonify({"success": True})
 
-        # ❌ Expired check
+        #  Expired check
         time_diff = datetime.utcnow() - order.created_at
         if time_diff > timedelta(minutes=5):
             order.status = "cancelled"
             db.session.commit()
             return jsonify({"success": False, "error": "Order expired"}), 400
 
-        # ✅ Mark as paid
+        # Mark as paid
         order.payment_status = "paid"
         order.paid_at = datetime.utcnow()
 
@@ -2289,7 +2289,7 @@ def pay(order_id):
 
     order = Order.query.get_or_404(order_id)
 
-    # 🔐 SECURITY
+    #  SECURITY
     if order.customer_id != session["user_id"]:
         return "Unauthorized", 403
 
@@ -2297,7 +2297,7 @@ def pay(order_id):
     if order.status == "cancelled":
         return redirect(url_for("my_orders"))
 
-    # ✅ Already paid
+    # Already paid
     if order.payment_status == "paid":
         return redirect(url_for("my_orders"))
 
@@ -2325,19 +2325,19 @@ def create_razorpay_order(order_id):
 
     order = Order.query.get_or_404(order_id)
 
-    # 🔐 Ownership check (IMPORTANT)
+    #  Ownership check (IMPORTANT)
     if order.customer_id != session["user_id"]:
         return jsonify({"error": "Unauthorized"}), 403
 
-    # ❌ Already cancelled
+    #  Already cancelled
     if order.status == "cancelled":
         return jsonify({"error": "Order cancelled"}), 400
 
-    # ❌ Already paid
+    #  Already paid
     if order.payment_status == "paid":
         return jsonify({"error": "Already paid"}), 400
 
-    # ⏱ EXPIRY CHECK
+    # EXPIRY CHECK
     time_diff = (datetime.utcnow() - order.created_at).total_seconds()
 
     if time_diff > 300:
@@ -2356,7 +2356,7 @@ def create_razorpay_order(order_id):
             "payment_capture": 1
         })
 
-        # 🔥 IMPORTANT FOR WEBHOOK
+        #  IMPORTANT FOR WEBHOOK
         order.razorpay_order_id = razorpay_order["id"]
         db.session.commit()
 
@@ -2382,7 +2382,7 @@ def razorpay_webhook():
     signature = request.headers.get("X-Razorpay-Signature")
 
     try:
-        # 🔐 Verify webhook signature
+        # Verify webhook signature
         client.utility.verify_webhook_signature(
             payload,
             signature,
@@ -2391,7 +2391,7 @@ def razorpay_webhook():
 
         data = json.loads(payload)
 
-        # 🎯 Only handle successful payments
+        #  Only handle successful payments
         if data["event"] == "payment.captured":
 
             payment = data["payload"]["payment"]["entity"]
@@ -2402,7 +2402,7 @@ def razorpay_webhook():
             ).first()
 
             if order:
-                # ❌ already paid
+                #  already paid
                 if order.payment_status == "paid":
                     return jsonify({"status": "already processed"})
 
@@ -2413,7 +2413,7 @@ def razorpay_webhook():
                     db.session.commit()
                     return jsonify({"status": "expired"})
 
-                # ✅ mark paid
+                #  mark paid
                 order.payment_status = "paid"
                 order.paid_at = datetime.utcnow()
 
